@@ -12,6 +12,7 @@ A2^{-1}*A1*X=X*B2*B1^{−1}
 # 需要提供N张.png
 # 和对应的机器人末端变换矩阵，写入txt，4*4N
 
+
 import json
 import os.path
 import cv2
