@@ -165,3 +165,6 @@ devel/
 install/
 log/
 .catkin_workspace
+
+# vscode
+.vscode/
