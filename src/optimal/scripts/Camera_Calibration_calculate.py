@@ -7,7 +7,7 @@ https://www.cnblogs.com/wenbozhu/p/10697374.html
 机器人末端姿态差和图案的姿态差顺序相反
 A2^{-1}*A1*X=X*B2*B1^{−1}
 """
-teststr = 'workstation test '
+
 
 # 2022/11/21
 # 需要提供N张.png
