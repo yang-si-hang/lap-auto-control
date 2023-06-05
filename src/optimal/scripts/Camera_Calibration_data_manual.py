@@ -54,12 +54,17 @@ def keyboard_interrupt(signal, frame):
 if __name__ == '__main__':
 
     cap = cv.VideoCapture(0)
-    cap.set(cv.CAP_PROP_FOURCC, cv.VideoWriter_fourcc('M', 'J', 'P', 'G'))
+    
+    # cap.set(cv.CAP_PROP_FOURCC, cv.VideoWriter_fourcc('M', 'J', 'P', 'G'))
+    # cap.set(cv.CAP_PROP_FPS, 30)
+    # cap.set(4, 1080)  # 图片宽度
+    # cap.set(3, 1920)  # 图片宽度
+    cap.set(cv.CAP_PROP_FOURCC, cv.VideoWriter_fourcc('Y', 'U', 'Y', 'V'))
     cap.set(cv.CAP_PROP_FPS, 30)
-    cap.set(4, 1080)  # 图片宽度
-    cap.set(3, 1920)  # 图片宽度
+    cap.set(4, 720)  # 图片宽度
+    cap.set(3, 1280)  # 图片宽度
     cv.namedWindow('figure', 0)
-    cv.resizeWindow('figure', 960, 540)
+    # cv.resizeWindow('figure', 960, 540)
 
 
 
