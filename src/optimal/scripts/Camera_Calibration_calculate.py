@@ -13,6 +13,7 @@ test20230605
 # 和对应的机器人末端变换矩阵，写入txt，4*4N
 
 
+teststr= 'test20230605'
 
 
 import json
