@@ -5,7 +5,6 @@
 https://www.cnblogs.com/wenbozhu/p/10697374.html
 图像顺序与机器人位姿顺序相同
 机器人末端姿态差和图案的姿态差顺序相反
-test20230605
 """
 
 # 2022/11/21
@@ -13,7 +12,7 @@ test20230605
 # 和对应的机器人末端变换矩阵，写入txt，4*4N
 
 
-teststr= 'test20230605'
+
 
 
 import json
