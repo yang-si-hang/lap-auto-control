@@ -12,7 +12,7 @@ Capturing = 0
 Capture_stop = 0
 step_i = 0
 
-
+#这些变换矩阵只是事先估计的，便于生成机械臂末端位姿作为采样点 ---------------------------------------------------------
 T_shaft_camera = np.array([ [   1,          0,                      0,                      0],
                             [   0,          np.cos(np.pi/6),        np.sin(np.pi/6),        0],
                             [   0,          -np.sin(np.pi/6),       np.cos(np.pi/6),        0],
@@ -28,13 +28,13 @@ T_shaft_robot = np.linalg.inv(T_robot_shaft)
 T_robot_camera = T_robot_shaft @ T_shaft_camera
 T_camera_robot = np.linalg.inv(T_robot_camera)
 
-T_robot = np.identity(4)
+T_robot = np.identity(4) #robot base 坐标系下机械臂末端位姿变换矩阵，只有一方的T默认为robot base 坐标系该方的位姿
 
                     # np.array([  [   0,                  -1,     0,                  x],
                     #             [   -np.cos(theta),     0,      np.sin(theta),      y],
                     #             [   -np.sin(theta),     0,      -np.cos(theta),     z],
                     #             [   0,                  0,      0,                  1]])
-
+# ------------------------------------------------------------------------------------------------------------
 
 
 class Camera_Thread(threading.Thread):
