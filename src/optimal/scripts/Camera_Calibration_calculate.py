@@ -158,6 +158,6 @@ T_tool_camera = np.hstack((R, t))
 T_tool_camera = np.vstack((T_tool_camera, np.array([0,0,0,1])))
 print(f'相机在机器人末端坐标系的位姿：\n{T_tool_camera}')
 
-# np.savetxt(f'{path}/mtx.csv', mtx)
+np.savetxt(f'{os.path.dirname(__file__)}/../data/Camera_Calibration/mtx.csv', mtx)
 # np.savetxt(f'{path}/dist.csv', dist)
-# np.savetxt(f'{path}/camera_tool.csv', T_tool_camera)
+np.savetxt(f'{os.path.dirname(__file__)}/../data/Camera_Calibration/camera_tool.csv', T_tool_camera)
