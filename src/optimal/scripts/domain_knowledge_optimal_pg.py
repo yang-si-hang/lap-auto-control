@@ -11,8 +11,11 @@ from rospy_tutorials.msg import Floats
 import scipy.io
 from spatialmath.base import *
 from math3d.transform import Transform as Trans
+import rospy
+from sensor_msgs.msg import Joy
 # from RcmControl import GetSpeed, MotionControl
 np.set_printoptions(precision=5,suppress=True)
+
 
 """
 
@@ -24,6 +27,8 @@ IntrinsicMatrix = np.loadtxt(f'{path}/../data/mtx.csv')
 IntrinsicMatrix_inv = np.linalg.inv(IntrinsicMatrix)
 camera_tool = np.loadtxt(f'{path}/../data/camera_tool.csv')
 dist = np.loadtxt(f'{path}/../data/dist.csv')
+
+
 
 
 #参数
@@ -51,9 +56,40 @@ deg_ud = 20
 #高斯分布参数 [       ,               ,               ,           ,   横坐标      ， 纵坐标       ，          ]
 # fun_left = [0.05410334, 137.06098690, 377.40041913, 431.40073990, 623.18590305, 473.16764162, 0.00402319]
 # fun_right = [0.07491880, 96.42623581, 99.32096722, 254.80939073, 1143.58609198, 468.94976255, 0.01276680]
-fun_left = [0.05410334, 137.06098690, 377.40041913, 431.40073990, 623.18590305, 600.16764162, 0.00402319]
-fun_right = [0.07491880, 96.42623581, 99.32096722, 254.80939073, 1143.58609198, 600.94976255, 0.01276680]
+fun_left_0 = [0.05410334, 137.06098690, 377.40041913, 431.40073990, 623.18590305, 600.16764162, 0.00402319]
+fun_right_0 = [0.07491880, 96.42623581, 99.32096722, 254.80939073, 1143.58609198, 600.94976255, 0.01276680]
+fun_left = fun_left_0.copy()
+fun_right = fun_right_0.copy()
 threshold = 0.8
+
+fun_last_time = 0
+
+k_fun_zoom = 200
+k_fun_xy = 100
+
+img_width = 1920
+img_height = 1080
+
+img_center_x = img_width /2
+img_center_y = img_height /2
+
+img_edge_x = 100
+img_edge_y = 50
+
+
+#手柄切换运镜模式的标识
+lap_control_mode = 0  #0:手动运镜，1：自动运镜+手动调节
+lock = True
+lock_last_button = 0
+dx = dy = dz = 0
+manual = False
+auto_fun = True
+auto_angle = True
+manual_last_button = 0
+auto_fun_last_button = 0
+auto_angle_last_button = 0
+fun_reset_last_button = False
+
 
 left_feature_detect = None
 right_feature_detect = None
@@ -261,11 +297,180 @@ def main_pg(left_pos, right_pos):
     return pop.champion_f[0], np.rad2deg(figure_theta), best_x
 
 
+
+
+def joy_fun_adjust(msg):
+
+    global lock
+    global lock_last_button
+    global dx,dy,dz
+    global manual, auto_fun, auto_angle
+    global manual_last_button, auto_fun_last_button, auto_angle_last_button, fun_reset_last_button
+    global fun_left, fun_right
+    global k_fun_xy, k_fun_zoom
+    global fun_left_0, fun_right_0
+    global fun_last_time
+
+    delta_time = time.time() - fun_last_time
+    fun_last_time = time.time()
+    print('delta time: ',delta_time)
+
+    if msg.buttons[10]:
+        if abs(lock_last_button) < 0.01:
+            if lock:
+                lock = False
+                print('已解锁')
+            else:
+                lock = True
+                print('已锁定')
+
+    lock_last_button = msg.buttons[10]
+    if lock:
+        dx = dy = dz = 0
+        return
+
+    lock_last_button = msg.buttons[10]
+    
+    threshold = 0.3
+    if abs(msg.axes[0]) > threshold:
+        dx = msg.axes[0]
+    else: 
+        dx = 0
+
+    if abs(msg.axes[1]) > threshold:
+        dy = msg.axes[1]
+    else:
+        dy = 0
+
+    if abs(msg.axes[5]) > threshold:
+        dz = msg.axes[5]
+    else:
+        dz = 0
+
+    if dx or dy or dz :
+        print(f'joy msg: ({dx:.2f},{dy:.2f},{dz:.2f})')
+        if dz:
+            left_x = fun_left[4] - img_center_x
+            left_y = fun_left[5] - img_center_y
+            left_y_x = left_y / left_x
+            left_distance = np.sqrt(pow(left_x,2) + pow(left_y,2))
+            right_x = fun_right[4] - img_center_x
+            right_y = fun_right[5] - img_center_y
+            right_y_x = right_y / right_x
+            right_distance = np.sqrt(pow(right_x,2) + pow(right_y,2))
+            print(f'left : ({left_x}, {left_y})  {left_distance}')
+            print(f'right: ({right_x}, {right_y})  {right_distance}')
+
+            left_x = left_x + left_x / (left_distance + right_distance)  * dz * k_fun_zoom * delta_time
+            right_x = right_x + right_x  / (left_distance + right_distance) * dz * k_fun_zoom * delta_time
+            left_y = left_y_x * left_x
+            right_y = right_y_x * right_x
+            fun_left[4] = left_x + img_center_x
+            fun_left[5] = left_y + img_center_y
+            fun_right[4] = right_x + img_center_x
+            fun_right[5] = right_y + img_center_y 
+            
+            
+
+
+        if dx:
+            fun_left[4] = fun_left[4] + k_fun_xy * dx * delta_time
+            fun_right[4] = fun_right[4] + k_fun_xy * dx * delta_time
+
+        if dy:
+            fun_left[5] = fun_left[5] + k_fun_xy * dy * delta_time
+            fun_right[5] = fun_right[5] + k_fun_xy * dy * delta_time
+
+
+        if fun_left[4] < img_edge_x:
+            fun_left[4] = img_edge_x
+        if fun_left[5] < img_edge_y:
+            fun_left[5] = img_edge_y
+
+        if fun_right[4] < img_edge_x:
+            fun_right[4] = img_edge_x
+        if fun_right[5] < img_edge_y:
+            fun_right[5] = img_edge_y
+
+        if fun_left[4] > img_width-img_edge_x:
+            fun_left[4] = img_width-img_edge_x
+        if fun_left[5] > img_height-img_edge_y:
+            fun_left[5] = img_height-img_edge_y
+
+        if fun_right[4] > img_width-img_edge_x:
+            fun_right[4] = img_width-img_edge_x
+        if fun_right[5] > img_height-img_edge_y:
+            fun_right[5] = img_height-img_edge_y
+        
+        # print('fun_L :',fun_left)
+        # print('fun_R :',fun_right)
+
+        
+
+
+
+
+    
+    if (not auto_fun_last_button) and msg.buttons[7]:
+        manual = False
+        auto_angle = False
+        auto_fun = True
+        print('Auto_fun')
+    if (not auto_angle_last_button) and msg.buttons[9]:
+        manual = False
+        auto_fun = False
+        auto_angle = True
+        print('Auto_angle')
+    if (not manual_last_button) and msg.buttons[6]:
+        auto_fun = False        
+        auto_angle = False
+        manual = True
+        print('Manual')
+    
+    auto_fun_last_button = msg.buttons[7]
+    auto_angle_last_button = msg.buttons[9]
+    manual_last_button = msg.buttons[6]
+    
+
+    if (not fun_reset_last_button) and msg.buttons[11]:
+        fun_left = fun_left_0.copy()
+        fun_right = fun_right_0.copy()
+        print('fun 复位')
+        print('fun_L :',fun_left)
+        print('fun_L0 :',fun_left_0)
+        print('fun_R :',fun_right)
+        print('fun_R0 :',fun_right_0)
+
+    fun_reset_last_button = msg.buttons[11]
+
+    
+    
+
+    if lap_control_mode == 0: #0:手动运镜，1：自动运镜+手动调节
+        pass
+
+    # print("-------------------------------------")
+    # print(msg.axes[0])
+    # print(msg.axes[1])
+    # print(msg.axes[2])
+    
+    
+
+    if lap_control_mode == 0: #0:手动运镜，1：自动运镜+手动调节
+        pass
+
+    print("-------------------------------------")
+    print(msg.axes[0])
+    print(msg.axes[1])
+    print(msg.axes[2])
+
+
 if __name__ == '__main__':
     rospy.init_node('Optimal', anonymous=True)
     rospy.Subscriber('LeftPos', numpy_msg(Floats), LeftPosProcess)
     rospy.Subscriber('RightPos', numpy_msg(Floats), RightPosProcess)
     rospy.Subscriber('ShaftPose', numpy_msg(Floats), ShaftPoseProcess)
+    rospy.Subscriber("joy", Joy ,joy_fun_adjust,queue_size=1)
     desire_pose_pub = rospy.Publisher('DesirePose', numpy_msg(Floats), queue_size=1)
     figure_theta_pub = rospy.Publisher('FigureTheta', Floats, queue_size=1)
 
@@ -280,6 +485,8 @@ if __name__ == '__main__':
     # 图像的姿态，旋转了FigureRotation
     # pose_figure = np.zeros([N,6])
     # 腹腔镜轴在rcm坐标系的位姿
+    print('start')
+    fun_last_time = time.time()
 
     while  not rospy.is_shutdown():
         start0 = time.time()

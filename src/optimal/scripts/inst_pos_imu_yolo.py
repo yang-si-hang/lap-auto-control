@@ -210,25 +210,39 @@ if __name__ == '__main__':
 
     cv2.namedWindow('figure', 0)
     cv2.resizeWindow('figure', 960, 540)
-    capture = cv2.VideoCapture(0)
     # v4l2 设置摄像头 https://blog.csdn.net/lantian510/article/details/119395673
-    capture.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
-    capture.set(cv2.CAP_PROP_FPS, 30)
-    # # # print(f'亮度：{capture.get(10)}')
-    # # # print(f'对比度：{capture.get(11)}')
-    # # # print(f'增益：{capture.get(14)}')
-    capture.set(10, 200)  # 亮度
-    # # capture.set(14, 4)   # 增益        
-    # # # capture.set(14, 8)   # 增益
-    # # capture.set(15, 80)   # 曝光度
-    # # # print(f'亮度：{capture.get(10)}')
-    # # # capture.set(11, 37)
-    # # capture.set(4, 720)  # 图片宽度
-    # # capture.set(3, 1280)  # 图片宽度
-    capture.set(4, 1080)  # 图片宽度
-    capture.set(3, 1920)  # 图片宽度
-    # # capture.set(cv2.CAP_PROP_BUFFERSIZE, 1)
-    # fourcc = cv2.VideoWriter_fourcc('M', 'J', 'P', 'G')
+    lap_num = 1
+    capture = cv2.VideoCapture(0)
+    # mod lap 小内窥镜-------------------------------------------------------------------------------------------------------
+    if lap_num == 0:
+        capture.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
+        capture.set(cv2.CAP_PROP_FPS, 30)
+        # # capture.set(4, 720)  # 图片宽度
+        # # capture.set(3, 1280)  # 图片宽度
+        capture.set(4, 1080)  # 图片宽度
+        capture.set(3, 1920)  # 图片宽度
+        capture.set(10, 200)  # 亮度
+        # # capture.set(14, 4)   # 增益        
+        # # # capture.set(14, 8)   # 增益
+        # # capture.set(15, 80)   # 曝光度
+        # # # capture.set(11, 37)
+        # # # print(f'亮度：{capture.get(10)}')   
+        # # # print(f'对比度：{capture.get(11)}')
+        # # # print(f'增益：{capture.get(14)}')
+        # # capture.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+        # fourcc = cv2.VideoWriter_fourcc('M', 'J', 'P', 'G')
+
+    #real lap 实际内窥镜（采集卡）------------------------------------------------------------------------------------------------- 
+    if lap_num == 1:
+        capture.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('N', 'V', '1', '2'))
+        capture.set(cv2.CAP_PROP_FPS, 60)
+        capture.set(4, 1080)  # 图片宽度
+        capture.set(3, 1920)  # 图片宽度
+    # --------------------------------------------------------------------------------------------------------------------------
+    
+
+
+
 
     DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')  # 放在cuda或者cpu上训练
     # device = 'cuda:0'

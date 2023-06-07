@@ -59,12 +59,12 @@ if __name__ == '__main__':
     # cap.set(cv.CAP_PROP_FPS, 30)
     # cap.set(4, 1080)  # 图片宽度
     # cap.set(3, 1920)  # 图片宽度
-    cap.set(cv.CAP_PROP_FOURCC, cv.VideoWriter_fourcc('Y', 'U', 'Y', 'V'))
-    cap.set(cv.CAP_PROP_FPS, 30)
-    cap.set(4, 720)  # 图片宽度
-    cap.set(3, 1280)  # 图片宽度
+    cap.set(cv.CAP_PROP_FOURCC, cv.VideoWriter_fourcc('N', 'V', '1', '2'))
+    cap.set(cv.CAP_PROP_FPS, 60)
+    cap.set(4, 1080)  # 图片宽度
+    cap.set(3, 1920)  # 图片宽度
     cv.namedWindow('figure', 0)
-    # cv.resizeWindow('figure', 960, 540)
+    cv.resizeWindow('figure', 960, 540)
 
 
 
@@ -82,7 +82,7 @@ if __name__ == '__main__':
 
 
     signal.signal(signal.SIGINT, keyboard_interrupt)
-    print("1.Press Enter to capture \n2.Press Ctrl+C to exit...")
+    print("1.Press any button to capture \n2.Press Ctrl+C to exit...")
     # 将终端设置为非规范模式,不修改的话需要回车，而且回车也会被读到
     orig_settings = termios.tcgetattr(sys.stdin)
     tty.setcbreak(sys.stdin)
@@ -91,13 +91,15 @@ if __name__ == '__main__':
     try:
         while True:
             success, frame = cap.read()
+            while frame is None:
+                pass
             cv.imshow('figure', frame)
             cv.waitKey(1)
             # 检查标准输入是否有可读数据
             rlist, _, _ = select.select([sys.stdin], [], [], 0.1)
             if rlist :
                 input_data = sys.stdin.read(1)
-
+               
                 print("capturing step: ",step_i)
 
                 trans_read = rob.get_pose()
