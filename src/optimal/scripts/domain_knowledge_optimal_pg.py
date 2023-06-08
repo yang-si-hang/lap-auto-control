@@ -172,7 +172,7 @@ def feasible_set(left_feature, right_feature):
 # fun_now_temp, figure_theta_temp = GetFun(T_r_c, left_feature, right_feature)
 def GetFun(T, left, right):
     T_0c = T_0_rcm @ T
-    print('T0c:',T_0c)
+    # print('T0c:',T_0c)
 
     R_0c = T_0c[0:3, 0:3]
     figure_theta = -np.arctan2(R_0c[1, 0], R_0c[1, 1])
@@ -315,6 +315,7 @@ def main_pg(left_pos, right_pos):
     # print(f'solve fun:{pop.champion_f}')
 
     T_0c = T_0_rcm @ trotx(best_x[1]) @ troty(best_x[2]) @ transl(0, 0, best_x[0]) @ trotx(-q0)
+    print('solve camera position: ', T_0c[0:3,3].T)
     R_0c = T_0c[0:3, 0:3]
     T_between_delta_0c = T_0c_before_deltax @ np.linalg.inv(T_0c)
     figure_theta = -np.arctan2(R_0c[1, 0], R_0c[1, 1])
@@ -549,6 +550,7 @@ if __name__ == '__main__':
         # fun_now_temp, figure_theta_temp = GetFun(T_r_c, left_feature, right_feature)  #无手柄偏置时的运算
         # fun_temp_old = fun_now_temp
         # print('T_between_delta_0c:\n',T_between_delta_0c)
+        print ('T_r_c now: ', T_r_c)
         T_r_c_before = T_rcm_0 @ T_between_delta_0c @ T_b_c_now
         fun_now_temp, figure_theta_temp = GetFun(T_r_c_before, left_feature, right_feature) #有手柄偏置时的运算
         fun_evaluate_temp, figure_theta_evaluate_temp, x_temp = main_pg(left_feature, right_feature)

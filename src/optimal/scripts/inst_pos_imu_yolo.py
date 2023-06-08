@@ -330,14 +330,14 @@ if __name__ == '__main__':
             cross_point_pos(0)
             point1 =  ((inst_box_l[0]).astype(np.int32),    (inst_box_l[1]).astype(np.int32))
             point2 =  ((inst_box_l[2]).astype(np.int32),    (inst_box_l[3]).astype(np.int32))
-            cv2.rectangle(frame, point1, point2, (0, 255, 0), thickness=1)
+            cv2.rectangle(frame, point1, point2, (0, 255, 0), thickness=3)
             # left_pub.publish( inst_l_pos.astype(np.float32) )
 
         if len(inst_box_r) != 0:
             cross_point_pos(1)
             point1 =  ((inst_box_r[0]).astype(np.int32),    (inst_box_r[1]).astype(np.int32))
             point2 =  ((inst_box_r[2]).astype(np.int32),    (inst_box_r[3]).astype(np.int32))
-            cv2.rectangle(frame, point1, point2, (255, 0, 0), thickness=1)
+            cv2.rectangle(frame, point1, point2, (255, 0, 0), thickness=3)
             right_pub.publish( inst_r_pos.astype(np.float32) )
             inst_l_pos = inst_r_pos - np.array([ 0.,  0., 0.])
             left_pub.publish( inst_l_pos.astype(np.float32) )
