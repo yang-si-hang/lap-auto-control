@@ -43,7 +43,7 @@ lock = True
 lock_last_button = 0
 dx = dy = dz = 0
 manual = False
-auto_fun = True
+auto_fun = False
 auto_angle = True
 manual_last_button = 0
 auto_fun_last_button = 0

@@ -146,7 +146,7 @@ def MoveToDesire(robot, desire_pose, K):
 def main():
     global stop_signal
 
-    # 出事姿态
+    # 初始姿态
     p1 = right_base_inv @ rcm_pose @ trotx(np.pi/4) @ troty(-np.pi/10) @ trotz(0.) @ transl(0, 0, 0.02)
 
     pose1 = Trans.get_pose_vector(Trans(p1))

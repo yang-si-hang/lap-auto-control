@@ -211,7 +211,7 @@ if __name__ == '__main__':
     cv2.namedWindow('figure', 0)
     cv2.resizeWindow('figure', 960, 540)
     # v4l2 设置摄像头 https://blog.csdn.net/lantian510/article/details/119395673
-    lap_num = 1
+    lap_num = 0
     capture = cv2.VideoCapture(0)
     # mod lap 小内窥镜-------------------------------------------------------------------------------------------------------
     if lap_num == 0:
@@ -339,11 +339,8 @@ if __name__ == '__main__':
             point2 =  ((inst_box_r[2]).astype(np.int32),    (inst_box_r[3]).astype(np.int32))
             cv2.rectangle(frame, point1, point2, (255, 0, 0), thickness=1)
             right_pub.publish( inst_r_pos.astype(np.float32) )
-            inst_l_pos = inst_r_pos - np.array([ 0.04,  0., 0.])
+            inst_l_pos = inst_r_pos - np.array([ 0.,  0., 0.])
             left_pub.publish( inst_l_pos.astype(np.float32) )
-
-
-        frame = cv2.resize(frame, (1280,720))
 
 
         
