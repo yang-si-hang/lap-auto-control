@@ -170,3 +170,5 @@ log/
 .vscode/
 
 src/vedio_capture/ffmpeg.exe
+
+.exe
