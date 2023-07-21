@@ -27,7 +27,7 @@ def main():
 
     try:
         while True:
-            # 检查标准输入是否有可读数据
+            # 检查标准输入是否有可读数据,没有这段好像也不影响ctrl c 中断
             rlist, _, _ = select.select([sys.stdin], [], [], 0.1)
             if rlist:
                 # 读取单个字符并处理

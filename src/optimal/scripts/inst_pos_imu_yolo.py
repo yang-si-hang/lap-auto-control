@@ -198,7 +198,7 @@ if __name__ == '__main__':
     # 读取 imu 的初始化数据
     print("reading imu q base......")
     q1_base = np.loadtxt(f'{os.path.dirname(__file__)}/../data/init_q1_base.csv', delimiter=",")
-    R_imu10_base = R.from_quat(q1_base).as_matrix()
+    R_imu10_base = R.from_quat(q1_base).as_matrix()  #imu1 的0 位相对于base坐标系的
     R_base_imu10 = R_imu10_base.T
     print("q1_base readed: ",q1_base)
 
