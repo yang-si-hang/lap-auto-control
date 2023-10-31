@@ -42,4 +42,8 @@
         /home/yiliao/.local/lib/python3.8/site-packages/urx/urrobot.py
         line 217
 
+2023.10.31
+    将此代码备份于此，此代码详情如上，用于ur5机械臂，使用urx包，曾运行于3080工作站。
+    此后的 workstation 分支，将部署于4090ITX，并用于ur10e，采用另外的包控制。
+
 
