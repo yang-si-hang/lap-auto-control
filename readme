@@ -42,4 +42,7 @@
         /home/yiliao/.local/lib/python3.8/site-packages/urx/urrobot.py
         line 217
 
+2023.10.31
+    开始部署到4090ITX，并用于控制ur10e
+
 
