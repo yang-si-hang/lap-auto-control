@@ -7,13 +7,18 @@ from rospy_tutorials.msg import Floats
 import urx
 import time
 import logging
+import sys
 from spatialmath.base import trotx, troty, trotz, transl, angvec2tr, rpy2tr
 from math3d.transform import Transform as Trans
+
+sys.path.append("/home/yiliao/wyh/laparoscope_ws/src/optimal/scripts")
+from lap_set_pk import lap_set
+
 np.set_printoptions(precision=5, suppress=True)
 
 path = os.path.dirname(__file__)
 
-rcm_point = np.array([0.56, 0.30, 0.18])
+# rcm_point = np.array([0.56, 0.30, 0.18]) #已经改用lap_set.py
 q0 = np.pi/6
 
 # left_base = np.array([[-0.9981, 0.06149, -0.004677, 0.01738],
@@ -35,7 +40,7 @@ camera_tcp = np.loadtxt(f'{path}/../data/camera_tool.csv')
 #                        [0, 0, 0, 1.0]])
 camera_tcp = camera_tcp @ trotx(q0)
 
-rcm_pose = transl(rcm_point) @ troty(np.pi) @ trotz(np.pi)
+rcm_pose = lap_set.T_0_rcm
 rcm_pose_inv = np.linalg.inv(rcm_pose)
 T_r_b = rcm_pose_inv @ right_base
 
@@ -57,15 +62,17 @@ def main():
     r = rospy.Rate(30)
 
     logging.basicConfig(level=logging.WARN)
-    rob = urx.Robot("192.168.100.102")
+    rob = urx.Robot(lap_set.robot_ip)
     # rob.set_tcp((0,0,0,0,0,0))
-    rob.set_tcp(tcp_pose)
+    rob.set_tcp(tcp_pose) #好像是设置为了shaft
     rob.set_payload(0.5, (0, 0, 0))
 
     try:
         while not rospy.is_shutdown():
             pose = rob.getl()
             pose_array = np.array(pose, dtype=np.float32)
+            print(Trans(pose))
+
             # T_b_s = Trans.get_array(Trans(pose_array))
             # T_0_c = left_base @ T_b_s @ trotx(-q0)
             shaft_pose_pub.publish(pose_array)

@@ -219,7 +219,7 @@ if __name__ == '__main__':
     # rospy.init_node('LPMS_Pos', anonymous=True)
 
 
-    rob = urx.Robot("192.168.100.102")
+    rob = urx.Robot(lap_set.robot_ip)
     rob.set_tcp((0, 0, 0, 0, 0, 0)) 
     rob.set_payload(2, (0, 0, 0.1))
     trans = rob.get_pose()

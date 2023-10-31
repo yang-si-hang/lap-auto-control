@@ -6,6 +6,10 @@ https://www.cnblogs.com/wenbozhu/p/10697374.html
 图像顺序与机器人位姿顺序相同
 机器人末端姿态差和图案的姿态差顺序相反
 A2^{-1}*A1*X=X*B2*B1^{−1}
+
+
+运算结果临时保存在 ../data/Camera_Calibration/mtx_temp.csv 和 camera_tool_temp.csv
+如果确认使用计算结果，请copy到 ../data/camera_tool.csv （相对末端的坐标）和 mtx.csv （内参）
 """
 
 
@@ -24,10 +28,18 @@ import glob
 path = os.path.dirname(__file__)
 tool_pos_path = f'{os.path.dirname(__file__)}/../data/Camera_Calibration/RobotPose.csv'
 
-# 角点的个数以及棋盘格间距
-XX = 8
+# 角点的个数以及棋盘格间距 =================================================
+# 大标定板----------------------------------------
+XX = 8  #9*12的板子如此设置
 YY = 11
 L = 0.03
+black_background = True #黑色背景（黑色外圈的）后续转换为白色底
+# 小标定板----------------------------------------
+XX = 8
+YY = 11
+L = 0.015
+black_background = False #黑色背景（黑色外圈的）后续转换为白色底
+# =======================================================================
 
 # 设置寻找亚像素角点的参数，采用的停止准则是最大循环次数30和最大误差容限0.001
 criteria = (cv2.TERM_CRITERIA_MAX_ITER | cv2.TERM_CRITERIA_EPS, 30, 0.001)
@@ -53,7 +65,8 @@ for fname in images:
     # cv2.imshow('img',img)
     # key = cv2.waitKey(10)
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    gray = 255-gray #一定要转换成白色为底
+    if black_background == True:
+        gray = 255-gray #一定要转换成白色为底
     cv2.namedWindow("img_gray", cv2.WINDOW_NORMAL)
     cv2.resizeWindow("img_gray", 400, 300)
     cv2.imshow('img_gray',gray)

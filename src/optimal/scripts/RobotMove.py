@@ -1,3 +1,6 @@
+'''
+此程序中，设置了 tcp，movel等命令是根据tcp坐标系运动的，不是使用机械臂末端坐标
+'''
 import os.path
 
 import numpy as np
@@ -8,13 +11,18 @@ from std_msgs.msg import Int8
 import urx
 import time
 import logging
+import sys
 from spatialmath.base import trotx, troty, trotz, transl, angvec2tr, rpy2tr
 from math3d.transform import Transform as Trans
 np.set_printoptions(precision=6, suppress=True)
 
+sys.path.append("/home/yiliao/wyh/laparoscope_ws/src/optimal/scripts")
+from lap_set_pk import lap_set
+
 path = os.path.dirname(__file__)
 
-rcm_point = np.array([0.56, 0.30, 0.18])
+#使用line 47 lap.set，不再使用rcm_point + rcmpose矩阵乘法运算
+# rcm_point = np.array([0.56, 0.30, 0.18])
 # rcm_point = np.array([0.55964715, 0.17523912, 0.21301739])
 max_speed = np.array([0.1, 0.1, 0.1, 0.1, 0.1, 0.01])
 
@@ -38,7 +46,8 @@ camera_tcp = np.loadtxt(f'{path}/../data/camera_tool.csv')
 #                       [0, 0, 0, 1.0]])
 camera_tcp = camera_tcp @ trotx(np.pi/6)
 
-rcm_pose = transl(rcm_point) @ troty(np.pi) @ trotz(np.pi)
+# rcm_pose = transl(rcm_point) @ troty(np.pi) @ trotz(np.pi)
+rcm_pose = lap_set.T_0_rcm
 rcm_pose_inv = np.linalg.inv(rcm_pose)
 T_r_b = rcm_pose_inv @ right_base
 
@@ -146,26 +155,28 @@ def MoveToDesire(robot, desire_pose, K):
 def main():
     global stop_signal
 
-    # 初始姿态
-    p1 = right_base_inv @ rcm_pose @ trotx(np.pi/4) @ troty(-np.pi/10) @ trotz(0.) @ transl(0, 0, 0.02)
+    #初始姿态
+    pose1 = lap_set.pose1
+    
 
-    pose1 = Trans.get_pose_vector(Trans(p1))
-    # pose1 = Trans.get_pose_vector(Trans(np.array([  [-0.9459478 , -0.31663491 , 0.07017897  ,0.61898767],
-    #                                                 [-0.28070318 , 0.69094978 ,-0.66617875 , 0.19490016],
-    #                                                 [ 0.1624453  ,-0.64986978 ,-0.74248285  ,0.32862668],
-    #                                                 [ 0.  ,        0.    ,      0.    ,      1.        ]])))
 
     logging.basicConfig(level=logging.WARN)
-    rob = urx.Robot("192.168.100.102")
-    # rob.set_tcp((0,0,0,0,0,0))
+    rob = urx.Robot(lap_set.robot_ip)
+    rob.set_tcp((0,0,0,0,0,0)) #暂时设置为0，到达初始位姿后，会重设 tcp
+    rob.set_payload(0.5, (0,0,0))
+
+    v = 0.01
+    a = 0.3
+    if(lap_set.RobotMove_init_pose):
+        print("======= pose1 ======")
+        print(pose1)
+        rob.movel(pose1, acc=a, vel=v)
+
+    
     rob.set_tcp(tcp_pose)
     rob.set_payload(0.5, (0,0,0))
 
-    v = 0.05
-    a = 0.3
-    print("======= pose1 ======")
-    print(pose1)
-    rob.movel(pose1, acc=a, vel=v)
+    
     i = 0
 
     # exit(0)

@@ -13,6 +13,9 @@ import select
 import tty
 import termios
 
+sys.path.append("/home/yiliao/wyh/laparoscope_ws/src/optimal/scripts")
+from lap_set_pk import lap_set
+
 Capturing = 0
 Capture_stop = 0
 step_i = 0
@@ -71,7 +74,7 @@ if __name__ == '__main__':
     img_path = f'{os.path.dirname(__file__)}/../data/Camera_Calibration/imgs/'
     T_path = f'{os.path.dirname(__file__)}/../data/Camera_Calibration/RobotPose.csv'
 
-    rob = urx.Robot("192.168.100.102")
+    rob = urx.Robot(lap_set.robot_ip)
     rob.set_tcp((0, 0, 0, 0, 0, 0)) 
     rob.set_payload(2, (0, 0, 0.1))
     time.sleep(0.2)

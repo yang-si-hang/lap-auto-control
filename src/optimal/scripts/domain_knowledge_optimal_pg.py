@@ -14,6 +14,10 @@ from math3d.transform import Transform as Trans
 import rospy
 from sensor_msgs.msg import Joy
 # from RcmControl import GetSpeed, MotionControl
+
+from lap_set_pk import lap_set
+
+
 np.set_printoptions(precision=5,suppress=True)
 
 
@@ -28,11 +32,16 @@ IntrinsicMatrix_inv = np.linalg.inv(IntrinsicMatrix)
 camera_tool = np.loadtxt(f'{path}/../data/camera_tool.csv')
 dist = np.loadtxt(f'{path}/../data/dist.csv')
 
+# coordinate_set_path = f'{os.path.dirname(__file__)}/../data/coordinate_set/'
+# T_0_rcm_file = coordinate_set_path + 'T_0_rcm.csv'
+# fun_left_0_file = coordinate_set_path + 'fun_left_0.csv'
+# fun_right_0_file = coordinate_set_path + 'fun_right_0.csv'
+
 
 
 
 #参数
-T_0_rcm = transl(0.56, 0.30, 0.18) @ troty(np.pi)  @ trotz(np.pi)
+T_0_rcm = lap_set.T_0_rcm
 T_rcm_0 = np.linalg.inv(T_0_rcm)
 q0 = np.pi / 6
 # left_base = np.array([[-0.9981, 0.06149, -0.004677, 0.01738],
@@ -60,8 +69,8 @@ deg_ud = 20
 # fun_right = [0.07491880, 96.42623581, 99.32096722, 254.80939073, 1143.58609198, 468.94976255, 0.01276680]
 # fun_left_0 = [0.05410334, 137.06098690, 377.40041913, 431.40073990, 623.18590305, 600.16764162, 0.00402319]
 # fun_right_0 = [0.07491880, 96.42623581, 99.32096722, 254.80939073, 1143.58609198, 600.94976255, 0.01276680]
-fun_left_0 = [0.05410334, 137.06098690, 377.40041913, 431.40073990, 760.18590305, 650.16764162, 0.00402319]
-fun_right_0 = [0.07491880, 96.42623581, 99.32096722, 254.80939073, 1160.58609198, 650.94976255, 0.01276680]  # 原点在右下角
+fun_left_0 =lap_set.fun_left_0
+fun_right_0 = lap_set.fun_right_0  # 原点在右下角
 fun_left = fun_left_0.copy()
 fun_right = fun_right_0.copy()
 threshold = 0.8

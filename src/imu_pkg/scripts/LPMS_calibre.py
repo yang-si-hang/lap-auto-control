@@ -18,6 +18,9 @@ import pyqtgraph as pg
 from pyqtgraph.Qt import QtCore, QtGui
 from PyQt5 import QtWidgets
 
+sys.path.append("/home/yiliao/wyh/laparoscope_ws/src/optimal/scripts")
+from lap_set_pk import lap_set
+
 
 g_std = 9.78
 data_frequency=200
@@ -36,7 +39,7 @@ acc_z1 = 0
 
 if __name__ == '__main__':
 
-    rob = urx.Robot("192.168.100.102")
+    rob = urx.Robot(lap_set.robot_ip)
     rob.set_tcp((0, 0, 0, 0, 0, 0)) 
     rob.set_payload(2, (0, 0, 0.1))
     trans = rob.get_pose()

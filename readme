@@ -23,3 +23,23 @@
 2023.08.18
     station20230818 分支，为暑假前第一次动物实验版本，此后的station版本预期将进行运动学代码整理，简化各程序文件中的坐标转换。
     .
+
+2023.09.14
+    1、为了避免多个文件中修改rcm位置，现添加
+        /home/yiliao/wyh/laparoscope_ws/src/optimal/scripts/coordinate_set.py
+        在该程序中手动修改rcm等设置数值，并将其保存至/home/yiliao/wyh/laparoscope_ws/src/optimal/data/coordinate_set/文件夹下的各变量.csv文件
+        其他程序从此文件读取（尚未修改所有文件）
+
+        q0暂未修改
+
+        又，方便起见，不再用 .csv 储存，改用 
+        from lap_set_pk import lap_set
+        变量写在 lap_set.py 中
+
+        注意，人为设置为主的数据写在 lap_set.py ，校准等为主的还是 .csv
+
+    2、ur5左臂存在一些故障，屏蔽掉running检测
+        /home/yiliao/.local/lib/python3.8/site-packages/urx/urrobot.py
+        line 217
+
+

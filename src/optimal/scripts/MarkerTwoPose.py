@@ -5,6 +5,7 @@ import copy
 import logging
 import os.path
 import time
+import sys
 
 import numpy as np
 import cv2
@@ -16,6 +17,12 @@ from scipy.optimize import fsolve, brentq, root
 from spatialmath.base import *
 from math3d.transform import Transform as Trans
 # from my_pkg.dual_ur5_kin import LeftUr5, RightUr5
+
+from lap_set_pk import lap_set
+
+sys.path.append("/home/yiliao/wyh/laparoscope_ws/src/optimal/scripts")
+from lap_set_pk import lap_set
+
 np.set_printoptions(precision=3,suppress=True)
 
 path = os.path.dirname(__file__)
@@ -25,6 +32,12 @@ IntrinsicMatrix_inv = np.linalg.inv(IntrinsicMatrix)
 camera_tool = np.loadtxt(f'{path}/../data/camera_tool.csv')
 dist = np.loadtxt(f'{path}/../data/dist.csv')
 
+# coordinate_set_path = f'{os.path.dirname(__file__)}/../data/coordinate_set/'
+# left_rcm_pos_file = coordinate_set_path + 'left_rcm_pos.csv'
+# right_rcm_pos_file = coordinate_set_path + 'right_rcm_pos.csv'
+# left_tip_0_file = coordinate_set_path + 'left_tip_0.csv'
+# right_tip_0_file = coordinate_set_path + 'right_tip_0.csv'
+
 marker_area_min = 50
 marker_area_max = 9000
 d_tip_marker = 0.005
@@ -32,12 +45,15 @@ q0 = np.pi/6
 
 # left_tip_0 = np.array([0.55, 0.08, 0.93])
 # right_tip_0 = np.array([0.45, 0.08, 0.93])
-left_tip_0 = np.array([0.50975898, 0.30078158, 0.05010113])
-right_tip_0 = np.array([0.61339974, 0.31193065, 0.05948734])
+left_tip_0 = lap_set.left_tip_0
+right_tip_0 = lap_set.right_tip_0
+
 beta = 0.9      # 移动加权平均系数
 
-left_rcm_pos = np.array([0.45108569, 0.26102381, 0.16898061, 1.])
-right_rcm_pos = np.array([0.67721158, 0.25670649, 0.17017894, 1.])
+left_rcm_pos = lap_set.left_rcm_pos
+right_rcm_pos = lap_set.right_rcm_pos
+# left_rcm_pos = np.array([0.45108569, 0.26102381, 0.16898061, 1.])
+# right_rcm_pos = np.array([0.67721158, 0.25670649, 0.17017894, 1.])
 
 
 # left_rcm_pos = np.array([0.59508, 0.22294, 0.99971, 1.])
@@ -311,7 +327,7 @@ if __name__ == '__main__':
 
     cv2.namedWindow('figure', 0)
     cv2.resizeWindow('figure', 900, 540)
-    capture = cv2.VideoCapture(2)
+    capture = cv2.VideoCapture(lap_set.camera_usb_id)
     capture.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M', 'J', 'P', 'G'))
     capture.set(cv2.CAP_PROP_FPS, 30)
     # print(f'曝光：{capture.get(15)}')
@@ -321,7 +337,7 @@ if __name__ == '__main__':
     capture.set(10, 255)  # 亮度
     capture.set(14, 4)   # 增益        
     # capture.set(14, 8)   # 增益
-    capture.set(15, 80)   # 曝光度
+    capture.set(15, 30)   # 曝光度
 
     # print(f'亮度：{capture.get(10)}')
     # capture.set(11, 37)
