@@ -10,10 +10,11 @@ from rospy_tutorials.msg import Floats
 from spatialmath.base import *
 from math3d.transform import Transform as Trans
 
-sys.path.append("/home/yiliao/wyh/laparoscope_ws/src/optimal/scripts")
-from lap_set_pk import lap_set
+# sys.path.append("/home/yiliao/wyh/laparoscope_ws/src/optimal/scripts")
+# from lap_set_pk import lap_set
 
-robot_ip = "192.168.100.101"
+# robot_ip = "192.168.100.101"
+robot_ip = "192.168.254.10"
 
 camera_usb_id = 0
 
@@ -59,6 +60,8 @@ pose1 = Trans.get_pose_vector(Trans(np.array([      [-0.34765125 , 0.79784105 ,-
                                                     [ 0.93746321 , 0.2860465,  -0.19834348 ,-0.02181759],
                                                     [-0.01735937, -0.53068546 ,-0.84739105 , 0.30195085],
                                                     [ 0.       ,   0.      ,    0.       ,   1.        ]])))  #此矩阵为机械臂末端位姿，前面几个是之前用的改过tcp的位姿
+
+
 
 
 RobotMove_init_pose = True
