@@ -1,3 +1,6 @@
+'''
+用于将rgb、bgr互换并保存
+'''
 import cv2
 import numpy as np
 

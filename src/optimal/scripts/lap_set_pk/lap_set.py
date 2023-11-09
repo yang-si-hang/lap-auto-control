@@ -13,8 +13,21 @@ from math3d.transform import Transform as Trans
 # sys.path.append("/home/yiliao/wyh/laparoscope_ws/src/optimal/scripts")
 # from lap_set_pk import lap_set
 
+
+# --------------------------------------- 视频保存路径 --------------------------------------
+vedio_file_path = '/home/irobotcare/桌面/EX_Data/lap/test/output_video.avi'                 #视频路径
+vedio_time_stamp_file_path = '/home/irobotcare/桌面/EX_Data/lap/test/vedio_timestamp.txt'   #视频每一帧对应时间戳保存路径
+
+# ------------------------------------------ 动捕 ------------------------------------------
+qualisys_master_ip = "192.168.253.1"
+qualisys_password = ''
+qtm_rigid_file_path = '/home/irobotcare/桌面/EX_Data/lap/test/rigid.txt'
+
+# ------------------------------------------------------------------------------------------
+
+
 # robot_ip = "192.168.100.101"
-robot_ip = "192.168.254.10"
+robot_ip = "192.168.253.10"
 
 camera_usb_id = 0
 

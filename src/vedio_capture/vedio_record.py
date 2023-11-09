@@ -1,3 +1,8 @@
+'''
+输出： recording time 并不是一直输出，而是每十秒进行一段输出，避免终端一直滚动
+终止：直接 ctrl c ，捕获到该终端信号后，会进行保存和终端设置。
+'''
+
 
 import copy
 import sys
@@ -40,9 +45,11 @@ import select
 import tty
 import termios
 
+sys.path.append(f"{os.path.dirname(__file__)}/../optimal/scripts")
+from lap_set_pk import lap_set
 
-vedio_file_path = '/home/yiliao/870evo_1t/Experiment_Data/20230629/output_video.avi'
-vedio_time_stamp_file_path = '/home/yiliao/870evo_1t/Experiment_Data/20230629/vedio_timestamp.txt'
+vedio_file_path = lap_set.vedio_file_path
+vedio_time_stamp_file_path = lap_set.vedio_time_stamp_file_path
 
 # 捕获线程的任务函数
 def capture_thread(cap, buffer):
@@ -129,8 +136,10 @@ if __name__ == '__main__':
             output.write(frame)
             data = f'{time_stamp}\n'
             vedio_time_stamp_file.write(data)
-            if int(time_stamp - record_start_time)%10 == 0:
+            record_time_length = time_stamp - record_start_time
+            if int(record_time_length)%10 == 0:
                 print(f'vedio recording  time: {time_stamp:.2f}')
+                print(f'录制时长：{int(record_time_length//3600):d}时 {(int(record_time_length)%3600)//60:d}分 {int(record_time_length%60):d}秒')
             while time.time()-loop_start_time < loop_time :
                 pass
 

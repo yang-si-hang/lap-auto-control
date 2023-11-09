@@ -1,5 +1,6 @@
 """
     Streaming 6Dof from QTM
+    文件路径、ip、密码 在lap_set中修改
 """
 
 import asyncio
@@ -19,9 +20,13 @@ from geometry_msgs.msg import PoseStamped
 import pandas as pd
 from spatialmath.base import *
 
+import sys
+import os
+sys.path.append(f"{os.path.dirname(__file__)}/../../optimal/scripts")
+from lap_set_pk import lap_set
 
 time_start = None
-file_name = '/home/yiliao/870evo_1t/Experiment_Data/20230629/rigids.txt'
+file_name = lap_set.qtm_rigid_file_path
 
 
 # calibration_rigid_msg = PoseStamped()
@@ -60,7 +65,7 @@ async def main():
     global msg_finished_flag
     # Connect to qtm
     # connection = await qtm_rt.connect("127.0.0.1")
-    connection = await qtm_rt.connect("192.168.254.1")
+    connection = await qtm_rt.connect(lap_set.qualisys_master_ip)
 
     # Connection failed?
     if connection is None:
@@ -69,7 +74,7 @@ async def main():
 
     # Take control of qtm, context manager will automatically release control after scope end
     # async with qtm_rt.TakeControl(connection, "password"):
-    async with qtm_rt.TakeControl(connection, "123456"):
+    async with qtm_rt.TakeControl(connection, lap_set.qualisys_password):
 
         # realtime = False  #????
         realtime = True
@@ -105,13 +110,17 @@ async def main():
         #     )
         # )
         time_stamp = time.time()
+        record_time_length = time_stamp - time_start
+        print(f"\n{time_stamp}")
+        print(f'录制时长：{int(record_time_length//3600):d}时 {(int(record_time_length)%3600)//60:d}分 {int(record_time_length%60):d}秒')
         for rigid_name in body_index:
             # Extract one specific body
             rigid_index = body_index[rigid_name]
             position, rotation = bodies[rigid_index]
 
             R = np.array(rotation).reshape(3,3).T #R是反的，是刚体坐标系下相机坐标系的表达
-            print(f"{rigid_name} \n",R)
+            # print(f"{rigid_name} \n",R)
+            print(f"{rigid_name}")
 
             q = r2q(R)
             # print("q: ",q)
@@ -122,6 +131,7 @@ async def main():
             
             # print(f'{(time.time()-time_start):.6f} s')
             # print("{} - Pos: {} - Rot: {}".format(calibration_rigid_name, position, rotation))
+        
 
 
        
