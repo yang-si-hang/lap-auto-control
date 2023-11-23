@@ -33,18 +33,18 @@ right_base = np.identity(4)
 
 right_base_inv = np.linalg.inv(right_base)
 
-camera_tcp = np.loadtxt(f'{path}/../data/camera_tool.csv')
+camera_tcp = np.loadtxt(f'{path}/../data/Camera_Calibration/camera_tool.csv')
 # camera_tcp = np.array([[-0.0346, -0.4999, 0.8654, 0.2181],
 #                        [-0.9994, 0.0219, -0.0273, 0.0019],
 #                        [-0.0053, -0.8658, -0.5003, 0.0324],
 #                        [0, 0, 0, 1.0]])
-camera_tcp = camera_tcp @ trotx(q0)
+shaft_tcp = camera_tcp @ trotx(q0) #将坐标系转回shaft
 
 rcm_pose = lap_set.T_0_rcm
 rcm_pose_inv = np.linalg.inv(rcm_pose)
 T_r_b = rcm_pose_inv @ right_base
 
-tcp_pose = Trans.get_pose_vector(Trans(camera_tcp))
+tcp_pose = Trans.get_pose_vector(Trans(shaft_tcp))
 tcp_pose = tuple(tcp_pose)
 
 
@@ -64,7 +64,7 @@ def main():
     logging.basicConfig(level=logging.WARN)
     rob = urx.Robot(lap_set.robot_ip)
     # rob.set_tcp((0,0,0,0,0,0))
-    rob.set_tcp(tcp_pose) #好像是设置为了shaft
+    rob.set_tcp(tcp_pose) #设置为了shaft
     rob.set_payload(0.5, (0, 0, 0))
 
     try:
@@ -75,7 +75,7 @@ def main():
 
             # T_b_s = Trans.get_array(Trans(pose_array))
             # T_0_c = left_base @ T_b_s @ trotx(-q0)
-            shaft_pose_pub.publish(pose_array)
+            shaft_pose_pub.publish(pose_array)  #由于前面设置过tcp，所以只需要rob.getl然后发布即可
             r.sleep()
             # T_b_e = Trans.get_array(Trans(pose_array))
             # T_r_e = left_base @ T_b_e

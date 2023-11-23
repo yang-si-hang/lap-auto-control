@@ -172,3 +172,7 @@ log/
 src/vedio_capture/ffmpeg.exe
 
 .exe
+
+.src/optimal/data/Camera_Calibration/imgs
+.src/optimal/data/Camera_Calibration/figure_save
+.src/optimal/data/Camera_Calibration/figure_undist

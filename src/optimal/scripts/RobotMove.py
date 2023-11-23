@@ -39,7 +39,7 @@ right_base = np.identity(4)
 # right_base = right_base @ trotz(-np.pi)
 right_base_inv = np.linalg.inv(right_base)
 
-camera_tcp = np.loadtxt(f'{path}/../data/camera_tool.csv')
+camera_tcp = np.loadtxt(f'{path}/../data/Camera_Calibration/camera_tool.csv')
 # camera_tcp = np.array([[-0.0346, -0.4999, 0.8654, 0.2181],
 #                       [-0.9994, 0.0219, -0.0273, 0.0019],
 #                       [-0.0053, -0.8658, -0.5003, 0.0324],
@@ -147,7 +147,7 @@ def MoveToDesire(robot, desire_pose, K):
     # if np.mod(i,10) == 0:
     # print(f'speed: {np.array(speed)}')
     # ???
-    robot.my_speedl_tool(speed, 0.3, 0.1)
+    robot.my_speedl_tool(speed, 0.3, 0.5)
 
     return dp, speed, rcm_error_s
 
@@ -164,12 +164,13 @@ def main():
     rob = urx.Robot(lap_set.robot_ip)
     rob.set_tcp((0,0,0,0,0,0)) #暂时设置为0，到达初始位姿后，会重设 tcp
     rob.set_payload(0.5, (0,0,0))
-
+    # rob.my_speedl_tool
     v = 0.01
     a = 0.3
     if(lap_set.RobotMove_init_pose):
         print("======= pose1 ======")
-        print(pose1)
+        print(Trans(pose1).array)
+
         rob.movel(pose1, acc=a, vel=v)
 
     

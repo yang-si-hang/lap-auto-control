@@ -38,10 +38,10 @@ np.set_printoptions(precision=3,suppress=True)
 
 path = os.path.dirname(__file__)
 
-IntrinsicMatrix = np.loadtxt(f'{path}/../data/mtx.csv')
+IntrinsicMatrix = np.loadtxt(f'{path}/../data/Camera_Calibration/mtx.csv')
 IntrinsicMatrix_inv = np.linalg.inv(IntrinsicMatrix)
-camera_tool = np.loadtxt(f'{path}/../data/camera_tool.csv')
-dist = np.loadtxt(f'{path}/../data/dist.csv')
+camera_tool = np.loadtxt(f'{path}/../data/Camera_Calibration/camera_tool.csv')
+dist = np.loadtxt(f'{path}/../data/Camera_Calibration/dist.csv')
 
 
 q0 = np.pi/6

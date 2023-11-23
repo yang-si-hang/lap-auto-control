@@ -20,17 +20,17 @@ from math3d.transform import Transform as Trans
 
 from lap_set_pk import lap_set
 
-sys.path.append("/home/yiliao/wyh/laparoscope_ws/src/optimal/scripts")
+sys.path.append(f'{os.path.dirname(__file__)}/../src/optimal/scripts')
 from lap_set_pk import lap_set
 
 np.set_printoptions(precision=3,suppress=True)
 
 path = os.path.dirname(__file__)
 
-IntrinsicMatrix = np.loadtxt(f'{path}/../data/mtx.csv')
+IntrinsicMatrix = np.loadtxt(f'{path}/../data/Camera_Calibration/mtx.csv')
 IntrinsicMatrix_inv = np.linalg.inv(IntrinsicMatrix)
-camera_tool = np.loadtxt(f'{path}/../data/camera_tool.csv')
-dist = np.loadtxt(f'{path}/../data/dist.csv')
+camera_tool = np.loadtxt(f'{path}/../data/Camera_Calibration/camera_tool.csv')
+dist = np.loadtxt(f'{path}/../data/Camera_Calibration/dist.csv')
 
 # coordinate_set_path = f'{os.path.dirname(__file__)}/../data/coordinate_set/'
 # left_rcm_pos_file = coordinate_set_path + 'left_rcm_pos.csv'
@@ -38,8 +38,8 @@ dist = np.loadtxt(f'{path}/../data/dist.csv')
 # left_tip_0_file = coordinate_set_path + 'left_tip_0.csv'
 # right_tip_0_file = coordinate_set_path + 'right_tip_0.csv'
 
-marker_area_min = 50
-marker_area_max = 9000
+marker_area_min = 200
+marker_area_max = 20000
 d_tip_marker = 0.005
 q0 = np.pi/6
 
@@ -82,7 +82,8 @@ def ShaftPoseProcess(msg):
     global T_0_c
     T_b_s = Trans.get_array(Trans(msg.data))
     T_0_c = right_base @ T_b_s @ trotx(-q0)
-    # print(T_0_c)
+    # print(f'T_b_s:\n{T_b_s}')
+    # print(f'T_0_c:\n{T_0_c}')
 
 
 def SolveH(rcm_point, point_pixel, p):
@@ -154,6 +155,7 @@ def cross_ratio(feature, point_rcm):
     :return:
     """
     if feature is None:
+        print('[error] cross_ratio: feature is None')
         return None, None
     else:
         feature = np.asarray(feature)
@@ -229,7 +231,7 @@ def LineDetect(img, dirname):
     start2 = time.time()
     # print(start2-start1)
     # 绿色的阈值
-    lb = np.array([35, 43, 46])
+    lb = np.array([30, 43, 46])
     ub = np.array([77, 255, 255])
 
     img_green = cv2.inRange(img_hsv, lb, ub)
@@ -251,13 +253,29 @@ def LineDetect(img, dirname):
     feature_candidate_all = []
     edge_area = []
     # print(len(img_edge))
+    # temp_area = []
     for i in range(len(img_edge)):
         edge_area_temp = cv2.contourArea(img_edge[i][:,0,:])
+        # temp_area.append(edge_area_temp)
         if (edge_area_temp > marker_area_min) and (edge_area_temp < marker_area_max):
             feature_candidate_all.append((img_edge[i][:,0,:],edge_area_temp))
             edge_area.append(edge_area_temp)
             # print(edge_area_temp)
 
+    # print(f'绿色面积：{sorted(temp_area,reverse = True)}')#需要前面大概十行内的 temp_area 没被注释掉
+  
+
+    
+    combined_list = list(zip(feature_candidate_all, edge_area)) # 使用 zip 将两个列表组合成一个元素为元组的列表
+    sorted_combined_list = sorted(combined_list, key=lambda combined_list: combined_list[1], reverse=True) # 使用 sorted 对组合后的列表进行排序，以 edge_area 为排序键
+    if len(edge_area) <= 8: 
+        feature_candidate_all = [item[0] for item in sorted_combined_list] # 提取排序后的 feature_candidate_all 列表
+        edge_area = [item[1] for item in sorted_combined_list]
+    else:
+        feature_candidate_all = [item[0] for item in sorted_combined_list[:8]] # 提取排序后的 feature_candidate_all 列表
+        edge_area = [item[1] for item in sorted_combined_list[:8]]
+    print(f'标记面积：{edge_area}')
+    
 
     feature_candidate = sorted(feature_candidate_all,key = lambda feature_candidate_all: feature_candidate_all[1], reverse=True)
     start5 = time.time()
@@ -281,6 +299,11 @@ def LineDetect(img, dirname):
                 sort_x = np.argsort(centre_points_x)
                 centre_points_sort = centre_points[sort_x, :]
             left_centre_points = np.asarray(centre_points_sort[0:4, :])
+            
+            for point in  centre_points:
+                cv2.circle(img_green, (int(point[0]),int(point[1])), 5, (150), -1) #修改时，记得也要改下面的，总共两处 （@@@ +++ @@@）
+            cv2.imshow('green_with_points', img_green)
+
             return None, left_centre_points
         else:
             feature_candidate = feature_candidate[0:8]
@@ -297,6 +320,11 @@ def LineDetect(img, dirname):
                 centre_points_sort = centre_points[sort_x, :]
             left_centre_points = np.asarray(centre_points_sort[0:4, :])
             right_centre_points = np.asarray(centre_points_sort[4:8,:])
+
+            for point in  centre_points:
+                cv2.circle(img_green, (int(point[0]),int(point[1])), 5, (150), -1) #修改时，记得也要改上面的，总共两处 （@@@ +++ @@@）
+            cv2.imshow('green_with_points', img_green)
+            
             return left_centre_points, right_centre_points
 
         # edge_filter = np.zeros([1080,1920], np.uint8)
@@ -319,11 +347,29 @@ def LineDetect(img, dirname):
     #, edge_filter
 
 
+def on_mouse(event, x, y, flags, param):
+    if event == cv2.EVENT_LBUTTONDOWN:
+        print('on_mouse')
+        # 获取鼠标点击位置的像素值
+        b, g, r = img[y, x]
+
+        # 将 BGR 值转换为 HSV 值
+        hsv_pixel = cv2.cvtColor(np.uint8([[b, g, r]]), cv2.COLOR_BGR2HSV)[0][0]
+
+        # 在窗口标题中显示 RGB 和 HSV 值
+        # cv2.setWindowTitle( 'figure',f"RGB: ({r}, {g}, {b}) | HSV: ({hsv_pixel[0]}, {hsv_pixel[1]}, {hsv_pixel[2]})")
+        # print( f"RGB: ({r}, {g}, {b}) | HSV: ({hsv_pixel[0]}, {hsv_pixel[1]}, {hsv_pixel[2]})")
+
+
+
 if __name__ == '__main__':
     rospy.init_node('FigureProcess', anonymous=True)
     left_pub = rospy.Publisher('LeftPos', numpy_msg(Floats), queue_size=1)
     right_pub = rospy.Publisher('RightPos', numpy_msg(Floats), queue_size=1)
     rospy.Subscriber('ShaftPose', numpy_msg(Floats), ShaftPoseProcess)
+
+    cv2.namedWindow('green_with_points', 0)
+    cv2.resizeWindow('green_with_points', 900, 540)
 
     cv2.namedWindow('figure', 0)
     cv2.resizeWindow('figure', 900, 540)
@@ -341,10 +387,10 @@ if __name__ == '__main__':
 
     # print(f'亮度：{capture.get(10)}')
     # capture.set(11, 37)
-    capture.set(4, 720)  # 图片宽度
-    capture.set(3, 1280)  # 图片宽度
-    # capture.set(4, 1080)  # 图片宽度
-    # capture.set(3, 1920)  # 图片宽度
+    # capture.set(4, 720)  # 图片宽度
+    # capture.set(3, 1280)  # 图片宽度
+    capture.set(4, 1080)  # 图片宽度
+    capture.set(3, 1920)  # 图片宽度
     capture.set(cv2.CAP_PROP_BUFFERSIZE, 1)
 
     fourcc = cv2.VideoWriter_fourcc('M', 'J', 'P', 'G')
@@ -394,7 +440,7 @@ if __name__ == '__main__':
                 # time.sleep(0.01)
                 cv2.waitKey(1)
                 # print(time.time()-start4)
-                # print('no marker!')
+                print('no marker!')
                 continue
             else:
                 print("left:")

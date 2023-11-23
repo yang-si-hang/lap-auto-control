@@ -9,7 +9,7 @@ A2^{-1}*A1*X=X*B2*B1^{−1}
 
 
 运算结果临时保存在 ../data/Camera_Calibration/mtx_temp.csv 和 camera_tool_temp.csv
-如果确认使用计算结果，请copy到 ../data/camera_tool.csv （相对末端的坐标）和 mtx.csv （内参）
+如果确认使用计算结果，请copy到 ../data/Camera_Calibration/camera_tool.csv （相对末端的坐标）和 mtx.csv （内参）
 """
 
 

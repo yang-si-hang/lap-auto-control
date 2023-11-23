@@ -117,18 +117,21 @@ async def main():
             # Extract one specific body
             rigid_index = body_index[rigid_name]
             position, rotation = bodies[rigid_index]
+            
+            R = np.array(rotation).reshape(3,3).T #R是反的，是刚体坐标系下相机坐标系的表达,经过此行.T后正常了R是相机坐标系下刚体的位姿
+            
 
-            R = np.array(rotation).reshape(3,3).T #R是反的，是刚体坐标系下相机坐标系的表达
-            # print(f"{rigid_name} \n",R)
-            print(f"{rigid_name}")
+            if not np.isnan(position[0]):  
+                # print(f"{rigid_name} \n{R}\n{position}")
+                print(f"{rigid_name}")
 
             q = r2q(R)
             # print("q: ",q)
 
-            # timestamp、i、name、xyz、wxyz、
-            data = f'{time_stamp},\t{rigid_index},\t{rigid_name},\t{position[0]},{position[1]},{position[2]},\t{q[0]},{q[1]},{q[2]},{q[3]}\n'
+            '''     timestamp、     i、             name、          xyz、                                                      wxyz、'''
+            data = f'{time_stamp},\t{rigid_index},\t{rigid_name},\t{position[0]/1000},{position[1]/1000},{position[2]/1000},\t{q[0]},{q[1]},{q[2]},{q[3]}\n'
             file.write(data)
-            
+            # if not np.isnan(position[0]): print(f'{data}')
             # print(f'{(time.time()-time_start):.6f} s')
             # print("{} - Pos: {} - Rot: {}".format(calibration_rigid_name, position, rotation))
         
@@ -141,7 +144,8 @@ async def main():
     # Start streaming frames
     await connection.stream_frames(components=["6d"], on_packet=on_packet)
     
-    while not rospy.is_shutdown():
+    # while not rospy.is_shutdown():
+    while True:
         # Wait asynchronously seconds
         await asyncio.sleep(1)
         pass
@@ -156,8 +160,9 @@ async def main():
 if __name__ == "__main__":
     time_start = time.time()
     file = open(file_name, 'a')
+    file.truncate(0)
 
-    rospy.init_node('qualisys_rigids_record', anonymous=True)
+    # rospy.init_node('qualisys_rigids_record', anonymous=True)
 
     
 

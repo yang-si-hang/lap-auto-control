@@ -27,10 +27,10 @@ np.set_printoptions(precision=5,suppress=True)
 
 path = os.path.dirname(__file__)
 
-IntrinsicMatrix = np.loadtxt(f'{path}/../data/mtx.csv')
+IntrinsicMatrix = np.loadtxt(f'{path}/../data/Camera_Calibration/mtx.csv')
 IntrinsicMatrix_inv = np.linalg.inv(IntrinsicMatrix)
-camera_tool = np.loadtxt(f'{path}/../data/camera_tool.csv')
-dist = np.loadtxt(f'{path}/../data/dist.csv')
+camera_tool = np.loadtxt(f'{path}/../data/Camera_Calibration/camera_tool.csv')
+dist = np.loadtxt(f'{path}/../data/Camera_Calibration/dist.csv')
 
 # coordinate_set_path = f'{os.path.dirname(__file__)}/../data/coordinate_set/'
 # T_0_rcm_file = coordinate_set_path + 'T_0_rcm.csv'
@@ -194,18 +194,18 @@ def GetFun(T, left, right):
 
     p_cl = np.dot(T_c0, left.T)
     p_cr = np.dot(T_c0, right.T)
-    print('left:',left)
-    print(f'p cl r:\n{p_cl}, {p_cr}')
+    print(f'世界坐标系下器械位置：\nl: {left[:-1]}\nr:{right[:-1]}\n')
+    print(f'镜头坐标系下器械末端位置:\nl: {p_cl[:-1]}\nr: {p_cr[:-1]}\n')
 
 
 
     image_left = np.dot(IntrinsicMatrix, (p_cl[0:3] / p_cl[2]))
     image_right = np.dot(IntrinsicMatrix, (p_cr[0:3] / p_cr[2]))
-    print(f'image l r:\n{image_left}, {image_right}')
+    # print(f'像素坐标:\nl: {image_left}\tr: {image_right}')
 
     pixel_left = np.squeeze(np.int32(image_left[0:2]))
     pixel_right = np.squeeze(np.int32(image_right[0:2]))
-    print(f'pixel:\n{pixel_left},{pixel_right}')
+    print(f'像素坐标:\nl: {pixel_left}\nr: {pixel_right}\n')
 
     J_left = fun_left[6] + fun_left[0] * np.exp(
         -(((pixel_left[0] - fun_left[4]) * np.cos(fun_left[1] * np.pi / 180) + (
@@ -246,8 +246,9 @@ def main_pg(left_pos, right_pos):
     # right_feature = right_pos
 
     alpha_bound, beta_bound = feasible_set(np.squeeze(left_pos), np.squeeze(right_pos))
-    print(alpha_bound)
-    print(beta_bound)
+    print(f'alpha_bound:{alpha_bound}')
+    print(f'beta_bound:{beta_bound}')
+
 
     class fun:
         def __init__(self, dim):
@@ -544,6 +545,8 @@ if __name__ == '__main__':
     joy_last_time = time.time()
 
     while  not rospy.is_shutdown():
+
+        print('==============================================')
         start0 = time.time()
         # print(f'-----------{i}--------------')
         if (T_r_s is None) or (left_feature_detect is None) or (right_feature_detect is None):
@@ -559,7 +562,7 @@ if __name__ == '__main__':
         # fun_now_temp, figure_theta_temp = GetFun(T_r_c, left_feature, right_feature)  #无手柄偏置时的运算
         # fun_temp_old = fun_now_temp
         # print('T_between_delta_0c:\n',T_between_delta_0c)
-        print ('T_r_c now: ', T_r_c)
+        # print ('T_r_c now: ', T_r_c)
         T_r_c_before = T_rcm_0 @ T_between_delta_0c @ T_b_c_now
         fun_now_temp, figure_theta_temp = GetFun(T_r_c_before, left_feature, right_feature) #有手柄偏置时的运算
         fun_evaluate_temp, figure_theta_evaluate_temp, x_temp = main_pg(left_feature, right_feature)
@@ -589,7 +592,8 @@ if __name__ == '__main__':
 
         # print(f'old fun: {fun_temp_old:.5f}     best fun: {fun_evaluate_temp:.5f}')
         print(f'now fun: {fun_now_temp:.5f}     best fun: {fun_evaluate_temp:.5f}')
-        print(f'total:{time.time()-start0}')
+        time_loop = time.time()-start0
+        print(f'总用时:{time_loop:.3f}\t频率:{1.0/time_loop:.1f} Hz')
         # print(f'best fun: {fun_evaluate_temp:.5f}')
     # np.savetxt(f'{path}/Robotdata/FunNow.csv', np.array(fun_now), fmt='%.6f')
     # np.savetxt(f'{path}/Robotdata/FunEvaluate.csv', np.array(fun_evaluate), fmt='%.6f')

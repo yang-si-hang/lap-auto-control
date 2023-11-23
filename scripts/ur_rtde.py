@@ -26,9 +26,8 @@ print(f"当前TCP速度: {rtde_r.getTargetTCPSpeed()}")
 
 
 #----- 末端位置控制 --------------------------------------------------------------------
-rtde_c.moveL([0.3829008765272479, -0.779356486672843, 0.3295970363725074, -2.045600586766512, 2.3108770523885713, -0.36196394363466333], 0.5, 0.3)
-rtde_c.moveL([0.3829008765272479, -0.579356486672843, 0.3295970363725074, -2.045600586766512, 2.3108770523885713, -0.36196394363466333], 0.5, 0.3)
-
+# rtde_c.moveL([0.3829008765272479, -0.779356486672843, 0.3295970363725074, -2.045600586766512, 2.3108770523885713, -0.36196394363466333], 0.5, 0.3)
+# rtde_c.moveL([0.3829008765272479, -0.579356486672843, 0.3295970363725074, -2.045600586766512, 2.3108770523885713, -0.36196394363466333], 0.5, 0.3)
 
 
 
@@ -37,24 +36,24 @@ rtde_c.moveL([0.3829008765272479, -0.579356486672843, 0.3295970363725074, -2.045
 # rtde_c.moveJ(joint_q)
 
 #----- 关节角速度，2ms一循环，总共2s------------------------------------------------------
-temp_time = time.time()
-for i in range(1000):
-    t_start = rtde_c.initPeriod()
-    joint_speed = [0.0, 0.0, 0.0, 0.0, -0.1, 0.0]
-    rtde_c.speedJ(joint_speed, 0.5, 0.002)              #目前测试情况，时间要设置在2ms左右，不支持长时间运动，可能会导致程序结束运动不停止
-    rtde_c.waitPeriod(t_start)
-print(f'SpeedJ用时：{time.time()-temp_time}')
-rtde_c.speedStop()                                      #速度控制结束一定注意stop
+# temp_time = time.time()
+# for i in range(1000):
+#     t_start = rtde_c.initPeriod()
+#     joint_speed = [0.0, 0.0, 0.0, 0.0, -0.1, 0.0]
+#     rtde_c.speedJ(joint_speed, 0.5, 0.002)              #目前测试情况，频率500hz，无论如何修改，时间都是2ms
+#     rtde_c.waitPeriod(t_start)
+# print(f'SpeedJ用时：{time.time()-temp_time}')
+# rtde_c.speedStop()                                      #速度控制结束一定注意stop
 
 
 #----- 末端速度控制 ------------------------------------------------------------------
-temp_time = time.time()
-for i in range(1500):
-    t_start = rtde_c.initPeriod()
-    rtde_c.speedL([0, 0, 0.1, 0, 0, 0], 0.1, 0.002)     #目前测试情况，时间要设置在2ms左右，不支持长时间运动，可能会导致程序结束运动不停止
-    rtde_c.waitPeriod(t_start)
-print(f'SpeedL用时：{time.time()-temp_time}')
-rtde_c.speedStop()                                      #速度控制结束一定注意stop
+# temp_time = time.time()
+# for i in range(1500):
+#     t_start = rtde_c.initPeriod()
+#     rtde_c.speedL([0, 0, 0.1, 0, 0, 0], 0.1, 0.002)     #目前测试情况，时间要设置在2ms左右，不支持长时间运动，可能会导致程序结束运动不停止，目前测试情况，频率500hz，无论如何修改，时间都是2ms
+#     rtde_c.waitPeriod(t_start)
+# print(f'SpeedL用时：{time.time()-temp_time}')
+# rtde_c.speedStop()                                      #速度控制结束一定注意stop
 
 
 #----- 运动至接触 ------------------------------------------------------------------
