@@ -202,7 +202,7 @@ async def main():
                 print(f'末端标记球位置:{p_qualisys_end}')
                 P_rigid_end = T_rigid_qualisys @ p_qualisys_end
 
-                usr_input = input("请输入偏置量x：")
+                usr_input = input("请输入偏置量x：(无偏置请回车)")
                 if usr_input == '':
                     p_adjust = np.array([0,0,0,0])
                 else:

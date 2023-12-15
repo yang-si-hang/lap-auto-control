@@ -14,9 +14,14 @@ from math3d.transform import Transform as Trans
 # from lap_set_pk import lap_set
 
 
-# --------------------------------------- 视频保存路径 --------------------------------------
+# ---------------------------------------- 视频保存 ----------------------------------------
 vedio_file_path = '/home/irobotcare/桌面/EX_Data/lap/test/output_video.avi'                 #视频路径
 vedio_time_stamp_file_path = '/home/irobotcare/桌面/EX_Data/lap/test/vedio_timestamp.txt'   #视频每一帧对应时间戳保存路径
+
+rgb2bgr = True          #true 则执行顺序翻转
+vedio_width = 1920
+vedio_height = 1080
+vedio_fps = 30.0
 
 # ------------------------------------------ 动捕 ------------------------------------------
 qualisys_master_ip = "192.168.253.1"
@@ -92,7 +97,6 @@ fun_right_0 = [0.07491880, 96.42623581, 99.32096722, 254.80939073, 1300.58609198
 
 
 # RobotMove 初始姿态,   两种设置方式
-RobotMove_init_pose = True
 RobotMove_init_pose = False
 
 p1 = T_0_rcm @ trotx(np.pi/4) @ troty(-np.pi/10) @ trotz(0.) @ transl(0, 0, 0.02)

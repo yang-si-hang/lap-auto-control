@@ -17,7 +17,7 @@ while True:
     if not ret:
         break
     
-    # 将颜色通道的顺序改变为RGR
+    # 将颜色通道的顺序改变为RGB
     corrected_frame = frame[:, :, [2, 1, 0]]
     
     # 将修正后的帧写入输出视频

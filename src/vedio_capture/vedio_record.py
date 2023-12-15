@@ -104,9 +104,9 @@ if __name__ == '__main__':
     # 打开USB摄像头
     capture = cv2.VideoCapture(0)
     capture.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('N', 'V', '1', '2'))
-    capture.set(cv2.CAP_PROP_FPS, 30)
-    # capture.set(4, 1080)  # 图片宽度
-    # capture.set(3, 1920)  # 图片宽度
+    capture.set(cv2.CAP_PROP_FPS, lap_set.vedio_fps)
+    capture.set(4, lap_set.vedio_height)  # 图片高度
+    capture.set(3, lap_set.vedio_width)  # 图片宽度
 
     # 检查摄像头是否成功打开
     if not capture.isOpened():
@@ -118,9 +118,9 @@ if __name__ == '__main__':
     frame_height = int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
     # 创建视频编写器对象，用于保存视频
-    output = cv2.VideoWriter(vedio_file_path, cv2.VideoWriter_fourcc(*'XVID'), 30.0, (frame_width, frame_height))
+    output = cv2.VideoWriter(vedio_file_path, cv2.VideoWriter_fourcc(*'XVID'), lap_set.vedio_fps, (frame_width, frame_height))
 
-    loop_time = 1.0/30
+    loop_time = 1.0/lap_set.vedio_fps
     record_start_time = time.time()
     print("开始录制视频")
 
@@ -132,6 +132,9 @@ if __name__ == '__main__':
 
             ret, frame = capture.read()
             time_stamp = time.time()
+            # 将颜色通道的顺序改变为RGR
+            if lap_set.rgb2bgr:
+                frame = frame[:, :, [2, 1, 0]]
 
             output.write(frame)
             data = f'{time_stamp}\n'
