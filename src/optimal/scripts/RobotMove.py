@@ -16,7 +16,7 @@ from spatialmath.base import trotx, troty, trotz, transl, angvec2tr, rpy2tr
 from math3d.transform import Transform as Trans
 np.set_printoptions(precision=6, suppress=True)
 
-sys.path.append("/home/yiliao/wyh/laparoscope_ws/src/optimal/scripts")
+sys.path.append("/home/irobotcare/wyh/laparoscope_ws/src/optimal/scripts")
 from lap_set_pk import lap_set
 
 path = os.path.dirname(__file__)

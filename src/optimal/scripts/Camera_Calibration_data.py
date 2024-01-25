@@ -1,6 +1,7 @@
 '''
 按照轨迹自动收集标定图片和机械臂位姿，存储位置见 line 114
 记得提前将存储位置老文件清空（不需要清空了，变换矩阵直接覆盖了）
+要清空： ../data/Camera_Calibration/imgs/  （如果图片数量一样会直接覆盖，原有多的不会覆盖） 
 不进行运算，运算在
 ./Camera_Calibration_calculate.py
 

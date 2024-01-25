@@ -15,13 +15,13 @@ from math3d.transform import Transform as Trans
 
 
 # ---------------------------------------- 视频保存 ----------------------------------------
-vedio_file_path = '/home/irobotcare/桌面/EX_Data/lap/test/output_video.avi'                 #视频路径
-vedio_time_stamp_file_path = '/home/irobotcare/桌面/EX_Data/lap/test/vedio_timestamp.txt'   #视频每一帧对应时间戳保存路径
+video_file_path = '/home/irobotcare/桌面/EX_Data/lap/test/output_video.avi'                 #视频路径
+video_time_stamp_file_path = '/home/irobotcare/桌面/EX_Data/lap/test/video_timestamp.txt'   #视频每一帧对应时间戳保存路径
 
 rgb2bgr = True          #true 则执行顺序翻转
-vedio_width = 1920
-vedio_height = 1080
-vedio_fps = 30.0
+video_width = 1920
+video_height = 1080
+video_fps = 30.0
 
 # ------------------------------------------ 动捕 ------------------------------------------
 qualisys_master_ip = "192.168.253.1"
@@ -63,9 +63,9 @@ left_rcm_pos = np.loadtxt(left_rcm_p_file)
 right_rcm_pos = np.loadtxt(right_rcm_p_file)
 # left_rcm_pos = np.array([-0.4444386657107944, 0.14681905872550005, 0.17437803674507565, 1.0])
 # right_rcm_pos = np.array([-0.44256179743616815, -0.07985374184252504, 0.17367135508476444, 1.0])
-print(f'left_rcm_p:\t{left_rcm_pos}')
-print(f'right_rcm_p:\t{right_rcm_pos}')
-print(f'camera_rcm_pose:\n{T_0_rcm}')
+# print(f'left_rcm_p:\t{left_rcm_pos}')
+# print(f'right_rcm_p:\t{right_rcm_pos}')
+# print(f'camera_rcm_pose:\n{T_0_rcm}')
 
 
 # MarkerTwoPose 中用于第一步迭代的初始位置（待确定）
@@ -107,4 +107,4 @@ pose1 = Trans.get_pose_vector(Trans(np.array(   [[-0.9048253684647052, -0.387966
                                                 [0.0, 0.0, 0.0, 1.0]])))  #此矩阵为机械臂末端位姿，前面几个是之前用的改过tcp的位姿
 
 
-print('lap_setting finished\n')
+print('\n==================================================\n\t\t lap_set finished\n==================================================\n')

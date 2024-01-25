@@ -1,3 +1,11 @@
+'''
+记得提前将存储位置老文件清空（不需要清空了，变换矩阵直接覆盖了）
+要清空： ../data/Camera_Calibration/imgs/  （如果图片数量一样会直接覆盖，原有多的不会覆盖） 
+
+不进行运算，运算在
+./Camera_Calibration_calculate.py
+'''
+
 import urx
 import math3d as m3d
 import numpy as np
@@ -84,7 +92,7 @@ if __name__ == '__main__':
     Note.truncate(0)
 
 
-    signal.signal(signal.SIGINT, keyboard_interrupt)
+    signal.signal(signal.SIGINT, keyboard_interrupt) 
     print("1.Press any button to capture \n2.Press Ctrl+C to exit...")
     # 将终端设置为非规范模式,不修改的话需要回车，而且回车也会被读到
     orig_settings = termios.tcgetattr(sys.stdin)
@@ -94,6 +102,11 @@ if __name__ == '__main__':
     try:
         while True:
             success, frame = cap.read()
+
+            # 将颜色通道的顺序改变为RGR
+            if lap_set.rgb2bgr:
+                frame = frame[:, :, [2, 1, 0]]
+
             while frame is None:
                 pass
             cv.imshow('figure', frame)
@@ -115,9 +128,15 @@ if __name__ == '__main__':
                 print('pose_getted:',step_i)
 
                 success, frame = cap.read()
+
                 if not success:
                     print('error!')
                     exit()
+
+                # 将颜色通道的顺序改变为RGR
+                if lap_set.rgb2bgr:
+                    frame = frame[:, :, [2, 1, 0]]
+
                 cv.imwrite(img_path+str(step_i).zfill(4)+'.png', frame)
                 Capturing = 0
                 print('Capture finish i:',step_i)
