@@ -45,7 +45,7 @@ damping_angular = 100
 
 acceleration_linear = np.array([0.0, 0.0, 0.0])
 acceleration_angular = np.array([0.0, 0.0, 0.0])
-acceleration_linear_rate = 1
+acceleration_linear_rate = 5
 acceleration_angular_rate = 0.1
 
 keyboard_monitor = key_signal.keyboard_monitor_class()
@@ -108,8 +108,25 @@ if __name__ == "__main__":
             else:
                 acceleration_angular= (torque - friction_angular * velocity_angular/np.linalg.norm(velocity_angular) - damping_angular * velocity_angular)/I_rotation * acceleration_angular_rate
             
-            velocity_linear     += acceleration_linear * time_step
-            velocity_angular    += acceleration_angular * time_step
+            delta_velocity_linear = acceleration_linear * time_step
+            delta_velocity_angular = acceleration_angular * time_step
+            
+
+            if np.linalg.norm(force) == 0:
+                if np.linalg.norm(delta_velocity_linear) > np.linalg.norm(velocity_linear):
+                    velocity_linear = np.array([0.0, 0.0, 0.0])
+                else:
+                    velocity_linear  += delta_velocity_linear
+            else:
+                velocity_linear  += delta_velocity_linear
+            
+            if np.linalg.norm(torque) == 0:
+                if np.linalg.norm(delta_velocity_angular) > np.linalg.norm(velocity_angular):
+                    velocity_angular = np.array([0.0, 0.0, 0.0])
+                else:
+                    velocity_angular  += delta_velocity_angular
+            else:
+                velocity_angular  += delta_velocity_angular
 
             print(  f'加速度:\t{acceleration_linear} \t{acceleration_angular} ')
             print(  f'速度:\t{velocity_linear} \t{velocity_angular} ')
