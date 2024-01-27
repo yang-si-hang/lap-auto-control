@@ -41,7 +41,7 @@ class keyboard_monitor_class(object):
         if not self.termios_resetted_flag:
             termios.tcsetattr(sys.stdin, termios.TCSADRAIN, self.orig_settings)
             print("------恢复终端设置------")
-
+'''
 def main():
     
     keyboard_monitor = keyboard_monitor_class()
@@ -75,3 +75,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+'''

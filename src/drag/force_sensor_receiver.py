@@ -19,11 +19,14 @@ class force_sensor_receiver_class(object):
         self.torque = [0, 0, 0]
         self.F = [0,0,0,0,0,0]
     
-        self.G = 0
-        self.M_center=[0, 0, 0]
-        self.F0 = [0, 0, 0, 0, 0, 0]
+        temp_array = np.loadtxt(f'{os.path.dirname(__file__)}/calibration_data/G_L_F0.txt',delimiter=',').squeeze()
+        if len(temp_array) != 10:
+             raise ValueError("G_L_F0.txt 不合规(应有G、L、F0共10个素素)")
+        self.G = temp_array[0]
+        self.M_center=temp_array[1:4].tolist()
+        self.F0 = temp_array[4:].tolist()
 
-        rospy.Subscriber('/bus0/ft_sensor0/ft_sensor_readings/wrench',WrenchStamped,  self.force_sensor_callback)
+        rospy.Subscriber('/Bota_force_sensor/wrenchstamped',WrenchStamped,  self.force_sensor_callback)
         
         pass
 
@@ -40,7 +43,9 @@ class force_sensor_receiver_class(object):
         self.G = G_float
         self.M_center = M_center_list
         self.F0 = F0_list
-
+    '''
+    return: 6素素的np.array
+    '''
     def pure_force_now(self, R_0_sensor):
         return self.pure_force_compute(self.force + self.torque, R_0_sensor)
 
