@@ -36,10 +36,8 @@ print(result_horizontal)
 
 from math3d.transform import Transform as Trans
 
-T_rob_sensor = np.array([   [0,    1,  0,   0],
-                                    [0,    0,  -1,  0],
-                                    [-1,   0,  0,   0],
-                                    [0,    0,  0,   1]])
+T_rob_sensor = lap_set.T_rob_sensor
+R_rob_sensor = T_rob_sensor[:3,:3]
 
 T = Trans(T_rob_sensor)
 

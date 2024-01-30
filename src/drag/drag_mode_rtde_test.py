@@ -16,6 +16,8 @@ from scipy.spatial.transform import Rotation
 import math3d as m3d
 import random
 from geometry_msgs.msg import TwistStamped
+import rtde_receive
+import rtde_control
 
 np.set_printoptions(precision=6, suppress=True)
 
@@ -32,36 +34,28 @@ force_threshold = 5
 torque_threshold = 0.2
 
 friction_linear = 2
-friction_angular = 0.05
+friction_angular = 0.2
 
-mass = 1
+mass = 3
 I_rotation = 0.3025
 
 velocity_linear = np.array([0.0, 0.0, 0.0])
 velocity_angular = np.array([0.0, 0.0, 0.0])
-velocity_linear_norm = 0
-velocity_angular_norm = 0
-velocity_linear_rate = 2
-velocity_angular_rate = 1
-velocity_linear_limit = 0.1
-velocity_angular_limit = 30/180*math.pi
 
-damping_linear = 2550
-damping_angular = 1.0
+damping_linear = 500
+damping_angular = 100
 
 acceleration_linear = np.array([0.0, 0.0, 0.0])
 acceleration_angular = np.array([0.0, 0.0, 0.0])
 acceleration_linear_rate = 0.1
-acceleration_angular_rate = 1
+acceleration_angular_rate = 0.1
 
 keyboard_monitor = key_signal.keyboard_monitor_class()
 
-frequency = 500
-frequency_pub = 50
+frequency = 100
+frequency_pub = 10
 pub_count = int(frequency/frequency_pub)
 time_step = 1.0/frequency
-
-
 
 
 T_rob_sensor = lap_set.T_rob_sensor
@@ -71,17 +65,20 @@ R_rob_sensor = T_rob_sensor[:3,:3]
 if __name__ == "__main__":
 
     rospy.init_node('drag_mode', anonymous=True)
-    rob = urx.Robot(lap_set.robot_ip)
+    rtde_c = rtde_control.RTDEControlInterface(lap_set.robot_ip)
+    rtde_r = rtde_receive.RTDEReceiveInterface(lap_set.robot_ip)
     F_sensor = force_sensor_receiver.force_sensor_receiver_class()
     pub_Twist = rospy.Publisher('TwistStamped_test',TwistStamped,queue_size=1)
     msg_TwistStamped = TwistStamped()
     time.sleep(0.5)
 
     rate = rospy.Rate(frequency)
+    count = 0
+    speed = [random.uniform(-0.02,0.02), 0, 0.01, 0, 0, 0]
     try:
-        count = 0
         while not rospy.is_shutdown():
-            T_0_sensor = rob.get_pose().array @ T_rob_sensor
+            trans_now = Trans(np.array(rtde_r.getActualTCPPose()))
+            T_0_sensor = trans_now.array @ T_rob_sensor
             R_0_sensor = T_0_sensor[:3,:3]
             F_now = F_sensor.pure_force_now(R_0_sensor)
             force = F_now[:3]
@@ -121,31 +118,16 @@ if __name__ == "__main__":
                     velocity_linear = np.array([0.0, 0.0, 0.0])
                 else:
                     velocity_linear  += delta_velocity_linear
-                velocity_linear = np.array([0.0, 0.0, 0.0])
-                
             else:
                 velocity_linear  += delta_velocity_linear
             
             if np.linalg.norm(torque) == 0:
                 if np.linalg.norm(delta_velocity_angular) > np.linalg.norm(velocity_angular):
                     velocity_angular = np.array([0.0, 0.0, 0.0])
-                else:   
+                else:
                     velocity_angular  += delta_velocity_angular
-                velocity_angular = np.array([0.0, 0.0, 0.0])
-
             else:
                 velocity_angular  += delta_velocity_angular
-
-            velocity_linear  = velocity_linear  * velocity_linear_rate
-            velocity_angular = velocity_angular * velocity_angular_rate
-
-            velocity_linear_norm = np.linalg.norm(velocity_linear)
-            velocity_angular_norm = np.linalg.norm(velocity_angular)
-            if velocity_linear_norm > velocity_linear_limit:
-                velocity_linear = velocity_linear/velocity_linear_norm * velocity_linear_limit
-            if velocity_angular_norm > velocity_angular_limit:
-                velocity_angular = velocity_angular/velocity_angular_norm * velocity_angular_limit  
-            
 
             print(  f'加速度:\t{acceleration_linear} \t{acceleration_angular} ')
             print(  f'速度:\t{velocity_linear} \t{velocity_angular} ')
@@ -157,14 +139,19 @@ if __name__ == "__main__":
             msg_TwistStamped.twist.angular.x = velocity_angular[0]
             msg_TwistStamped.twist.angular.x = velocity_angular[1]
             msg_TwistStamped.twist.angular.x = velocity_angular[2]
-            count += 1
+            pub_Twist.publish(msg_TwistStamped)
+            # t_start = rtde_c.initPeriod()
+            # rtde_c.speedL(velocity_linear.tolist()+[0, 0, 0], 0.5, 0.002)
+            count +=1 
             if count >= pub_count:
                 count = 0
-                # rob.my_speedl(velocity_linear.tolist()+[0, 0, 0],0.5,0.2)
-                # rob.my_speedl([0,0,0]+velocity_angular.tolist(),0.5,0.2)
-                rob.my_speedl(velocity_linear.tolist()+velocity_angular.tolist(),0.5,0.2)
-                pub_Twist.publish(msg_TwistStamped)
+                speed = velocity_linear.tolist()+[0, 0, 0]
+                rtde_c.speedL(speed, 0.5, 0.002)
+            # speed = [random.uniform(-0.019,-0.02), 0, 0.001, 0, 0, 0]
+            
 
+
+            # rtde_c.waitPeriod(t_start)
 
 
             rate.sleep()
@@ -177,6 +164,7 @@ if __name__ == "__main__":
     finally:
         keyboard_monitor.monitor_stop()
         rospy.signal_shutdown("Shutdown signal received.")
-        rob.close()
+        rtde_c.speedStop()
+        rtde_c.stopScript()
 
 

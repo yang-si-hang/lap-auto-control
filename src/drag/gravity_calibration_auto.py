@@ -27,15 +27,8 @@ sys.path.append(f"{os.path.dirname(__file__)}/../../scripts/my_tools")
 import key_signal
 
 
-R_rob_sensor = np.array([   [0,    1,  0   ],
-                            [0,    0,  -1  ],
-                            [-1,   0,  0   ]])
-
-# 暂时只在T中设置了R
-T_rob_sensor = np.array([   [-1,   0,  0,   0],
-                            [0,    0,  -1,  0],
-                            [0,   -1,  0,   0],
-                            [0,    0,  0,   1]])
+T_rob_sensor = lap_set.T_rob_sensor
+R_rob_sensor = T_rob_sensor[:3,:3]
 
 
 
