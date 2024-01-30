@@ -32,7 +32,7 @@ force_threshold = 5
 torque_threshold = 0.2
 
 friction_linear = 2
-friction_angular = 0.2
+friction_angular = 0.05
 
 mass = 1
 I_rotation = 0.3025
@@ -44,15 +44,15 @@ velocity_angular_norm = 0
 velocity_linear_rate = 2
 velocity_angular_rate = 1
 velocity_linear_limit = 0.1
-velocity_angular_limit = 0.1
+velocity_angular_limit = 30/180*math.pi
 
 damping_linear = 2550
-damping_angular = 100
+damping_angular = 1.0
 
 acceleration_linear = np.array([0.0, 0.0, 0.0])
 acceleration_angular = np.array([0.0, 0.0, 0.0])
 acceleration_linear_rate = 0.1
-acceleration_angular_rate = 0.1
+acceleration_angular_rate = 1
 
 keyboard_monitor = key_signal.keyboard_monitor_class()
 
@@ -126,14 +126,18 @@ if __name__ == "__main__":
                     velocity_linear = np.array([0.0, 0.0, 0.0])
                 else:
                     velocity_linear  += delta_velocity_linear
+                velocity_linear = np.array([0.0, 0.0, 0.0])
+                
             else:
                 velocity_linear  += delta_velocity_linear
             
             if np.linalg.norm(torque) == 0:
                 if np.linalg.norm(delta_velocity_angular) > np.linalg.norm(velocity_angular):
                     velocity_angular = np.array([0.0, 0.0, 0.0])
-                else:
+                else:   
                     velocity_angular  += delta_velocity_angular
+                velocity_angular = np.array([0.0, 0.0, 0.0])
+
             else:
                 velocity_angular  += delta_velocity_angular
 
@@ -161,7 +165,9 @@ if __name__ == "__main__":
             count += 1
             if count >= pub_count:
                 count = 0
-                rob.my_speedl(velocity_linear.tolist()+[0, 0, 0],0.5,0.2)
+                # rob.my_speedl(velocity_linear.tolist()+[0, 0, 0],0.5,0.2)
+                # rob.my_speedl([0,0,0]+velocity_angular.tolist(),0.5,0.2)
+                rob.my_speedl(velocity_linear.tolist()+velocity_angular.tolist(),0.5,0.2)
                 pub_Twist.publish(msg_TwistStamped)
 
 
