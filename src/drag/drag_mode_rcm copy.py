@@ -1,3 +1,7 @@
+'''
+仅由角加速度推算切向加速度
+'''
+
 import os.path
 import math
 
@@ -31,28 +35,28 @@ import key_signal
 force_threshold = 5
 torque_threshold = 0.2
 
-friction_linear = 2
+friction_linear = 1
 friction_angular = 0.05
 
-mass = 1
-I_rotation = 0.3025
+mass = 0.5
+I_rotation = 0.6
 
 velocity_linear = np.array([0.0, 0.0, 0.0])
 velocity_angular = np.array([0.0, 0.0, 0.0])
 velocity_linear_norm = 0
 velocity_angular_norm = 0
-velocity_linear_rate = 2
-velocity_angular_rate = 1
+# velocity_linear_rate = 2
+# velocity_angular_rate = 1
 velocity_linear_limit = 0.1
 velocity_angular_limit = 10/180*math.pi
 
-damping_linear = 1300
-damping_angular = 1.0
+damping_linear = 100
+damping_angular = 0.2
 
 acceleration_linear = np.array([0.0, 0.0, 0.0])
 acceleration_angular = np.array([0.0, 0.0, 0.0])
-acceleration_linear_rate = 0.2
-acceleration_angular_rate = 0.25
+# acceleration_linear_rate = 0.2
+# acceleration_angular_rate = 0.25
 
 keyboard_monitor = key_signal.keyboard_monitor_class()
 
@@ -132,25 +136,32 @@ if __name__ == "__main__":
             print(f'切向力法向残余：{np.dot(force_tau,vector_s_rcm_normalized)}')
             print(f'力：{force} \t力矩:{torque} = {torque-torque_force_tau} + {torque_force_tau}')
 
+            # 阻尼力，以及阻尼力产生的力矩
+            force_damp_linear =  - damping_linear * velocity_linear
+            force_damp_n = np.dot(force_damp_linear, vector_s_rcm_normalized) * vector_s_rcm_normalized
+            force_damp_tau = force_damp_linear - force_damp_n
+            torque_damp_angular = -damping_angular * velocity_angular
+            torque_damp_linear_tau = np.cross(-vector_s_rcm, force_damp_tau)
+
 
             
             if np.linalg.norm(velocity_linear) == 0:
                 if np.linalg.norm(force) <= friction_linear:
                     acceleration_linear == np.array([0.0, 0.0, 0.0])
                 else:
-                    acceleration_linear = (force - friction_linear * force/np.linalg.norm(force) )/mass * acceleration_linear_rate
+                    acceleration_linear = (force - friction_linear * force/np.linalg.norm(force) )/mass
             else:
-                acceleration_linear = (force - friction_linear * velocity_linear/np.linalg.norm(velocity_linear) - damping_linear * velocity_linear)/mass * acceleration_linear_rate
-            acceleration_linear = np.dot(acceleration_linear, vector_s_rcm_normalized) * vector_s_rcm_normalized
+                acceleration_linear = (force - friction_linear * velocity_linear/np.linalg.norm(velocity_linear) + force_damp_linear)/mass
+            # acceleration_linear_n = np.dot(acceleration_linear, vector_s_rcm_normalized) * vector_s_rcm_normalized
 
 
             if np.linalg.norm(velocity_angular) == 0:
                 if np.linalg.norm(torque) <= friction_angular:
                     acceleration_angular == np.array([0.0, 0.0, 0.0])
                 else:
-                    acceleration_angular= (torque - friction_angular * torque/np.linalg.norm(torque) )/I_rotation * acceleration_angular_rate
+                    acceleration_angular= (torque - friction_angular * torque/np.linalg.norm(torque) )/I_rotation
             else:
-                acceleration_angular= (torque - friction_angular * velocity_angular/np.linalg.norm(velocity_angular) - damping_angular * velocity_angular)/I_rotation * acceleration_angular_rate
+                acceleration_angular= (torque - friction_angular * velocity_angular/np.linalg.norm(velocity_angular) + torque_damp_angular + torque_damp_linear_tau)/I_rotation
             
             delta_velocity_linear = acceleration_linear * time_step
             delta_velocity_angular = acceleration_angular * time_step
@@ -174,17 +185,20 @@ if __name__ == "__main__":
             else:
                 velocity_angular  += delta_velocity_angular
 
-            velocity_linear  = velocity_linear  * velocity_linear_rate
-            velocity_angular = velocity_angular * velocity_angular_rate
+            # velocity_linear  = velocity_linear  * velocity_linear_rate
+            # velocity_angular = velocity_angular * velocity_angular_rate
             # rcm 约束下，只取法向速度
             velocity_linear = np.dot(velocity_linear, vector_s_rcm_normalized) * vector_s_rcm_normalized
 
             velocity_linear_norm = np.linalg.norm(velocity_linear)
             velocity_angular_norm = np.linalg.norm(velocity_angular)
             if velocity_linear_norm > velocity_linear_limit:
-                velocity_linear = velocity_linear/velocity_linear_norm * velocity_linear_limit
-            if velocity_angular_norm > velocity_angular_limit:
-                velocity_angular = velocity_angular/velocity_angular_norm * velocity_angular_limit
+                scale_rate = velocity_linear_limit/velocity_linear_norm
+                velocity_linear = velocity_linear * scale_rate
+                velocity_angular = velocity_angular * scale_rate
+
+            # if velocity_angular_norm > velocity_angular_limit:
+            #     velocity_angular = velocity_angular/velocity_angular_norm * velocity_angular_limit
 
             velocity_tau = np.cross(velocity_angular, -vector_rob_rcm)  #在 rcm 约束下，旋转带来的机械臂末端速度
             velocity_linear = velocity_linear + velocity_tau
