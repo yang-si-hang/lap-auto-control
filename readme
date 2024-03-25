@@ -1,0 +1,53 @@
+2023.05.08
+    将此ws版本与工作站上的可运行demo版本进行比较，去除了无用文件，.csv文件存储路径改成了data文件夹内，其余保持一致
+    camkelist 的节点名尚未设置
+
+2023.05.08
+    开始进行修改
+
+    修改完成，能跑
+
+2023.06.05
+    optimal 添加了tests文件夹
+    相机标定添加了手动程序版本 Camera_Calibration_data_manual
+
+2023.06.08
+    添加了手柄偏置
+    待解决问题：
+        1、深度偏置后退时很诡异（可能是退出了rcm点）
+        2、各偏置极限未限制
+        3、去除了 figure_theta 的计算，初步观察像素坐标恢复正常，是否有影响还待仔细考察
+
+2023.08.18
+    station20230818 分支，为暑假前第一次动物实验版本，此后的station版本预期将进行运动学代码整理，简化各程序文件中的坐标转换。
+    
+
+2023.09.14
+    1、为了避免多个文件中修改rcm位置，现添加
+        /home/yiliao/wyh/laparoscope_ws/src/optimal/scripts/coordinate_set.py
+        在该程序中手动修改rcm等设置数值，并将其保存至/home/yiliao/wyh/laparoscope_ws/src/optimal/data/coordinate_set/文件夹下的各变量.csv文件
+        其他程序从此文件读取（尚未修改所有文件）
+
+    q0暂未修改
+
+    又，方便起见，不再用 .csv 储存，改用
+        from lap_set_pk import lap_set
+        变量写在 lap_set.py 中
+
+    注意，人为设置为主的数据写在 lap_set.py ，校准等为主的还是 .csv
+
+    2、ur5左臂存在一些故障，屏蔽掉running检测
+        /home/yiliao/.local/lib/python3.8/site-packages/urx/urrobot.py
+        line 217
+
+2023.10.31
+    开始部署到4090ITX，并用于控制ur10e
+
+2023.11.9
+    添加了 ur_rtde.py 示例代码，但还没有替换urx控制
+
+2023.11.13
+    调整了键盘监听功能（test中的）
+
+待办：
+    1、shaft的发布是否有必要，shaft和camera之间的旋转用的q0而非标定量，是否会造成误差？
