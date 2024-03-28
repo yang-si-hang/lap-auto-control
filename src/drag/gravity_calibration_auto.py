@@ -163,16 +163,16 @@ if __name__ == '__main__':
     pose_file = f'{os.path.dirname(__file__)}/calibration_data/pose.txt'
     G_L_F0_file = f'{os.path.dirname(__file__)}/calibration_data/G_L_F0.txt'
 
-    # #运动采点，并保存数据
-    # move_and_save_data(30, F_file, pose_file, rob, F_sensor)
+    #运动采点，并保存数据
+    move_and_save_data(30, F_file, pose_file, rob, F_sensor)
 
-    # #根据数据点文件来进行计算
-    # G, L, F0 = gravity_compensation(F_file, pose_file, G_L_F0_file)
-    # print(f'G:\n{G}')
-    # print(f'L:\n{L}')
-    # print(f'F0:\n{F0}')
+    #根据数据点文件来进行计算
+    G, L, F0 = gravity_compensation(F_file, pose_file, G_L_F0_file)
+    print(f'G:\n{G}')
+    print(f'L:\n{L}')
+    print(f'F0:\n{F0}')
 
-    # F_sensor.set_gravity_args(G, L, F0)
+    F_sensor.set_gravity_args(G, L, F0)
     
 
     try:
