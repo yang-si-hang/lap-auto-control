@@ -12,6 +12,7 @@ import sys
 import os
 import transformations
 
+from sensor_msgs.msg import JointState
 
 
 

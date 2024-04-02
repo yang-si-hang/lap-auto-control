@@ -16,6 +16,8 @@ from scipy.spatial.transform import Rotation
 import math3d as m3d
 import random
 from geometry_msgs.msg import TwistStamped
+sys.path.append(f"{os.path.dirname(__file__)}/../../scripts")
+import rokae_basic_fun 
 
 np.set_printoptions(precision=6, suppress=True)
 
@@ -35,7 +37,15 @@ friction_linear = 2
 friction_angular = 0.05
 
 mass = 1
-I_rotation = 0.3025
+I_rotation_x = 0.3025
+I_rotation_y = 0.3025
+I_rotation_z = 0.1
+I_matrix = np.zeros((3,3))
+I_matrix[0,0] = I_rotation_x
+I_matrix[1,1] = I_rotation_y
+I_matrix[2,2] = I_rotation_z
+I_matrix_inv = np.linalg.inv(I_matrix)
+
 
 velocity_linear = np.array([0.0, 0.0, 0.0])
 velocity_angular = np.array([0.0, 0.0, 0.0])
@@ -43,11 +53,11 @@ velocity_linear_norm = 0
 velocity_angular_norm = 0
 velocity_linear_rate = 2
 velocity_angular_rate = 1
-velocity_linear_limit = 0.1
+velocity_linear_limit = 0.2
 velocity_angular_limit = 30/180*math.pi
 
-damping_linear = 2550
-damping_angular = 1.0
+damping_linear = 2650
+damping_angular = 2.0
 
 acceleration_linear = np.array([0.0, 0.0, 0.0])
 acceleration_angular = np.array([0.0, 0.0, 0.0])
@@ -71,7 +81,8 @@ R_rob_sensor = T_rob_sensor[:3,:3]
 if __name__ == "__main__":
 
     rospy.init_node('drag_mode', anonymous=True)
-    rob = urx.Robot(lap_set.robot_ip)
+    rokae = rokae_basic_fun.rokae()
+    rokae.set_mode('cv')
     F_sensor = force_sensor_receiver.force_sensor_receiver_class()
     pub_Twist = rospy.Publisher('TwistStamped_test',TwistStamped,queue_size=1)
     msg_TwistStamped = TwistStamped()
@@ -81,7 +92,7 @@ if __name__ == "__main__":
     try:
         count = 0
         while not rospy.is_shutdown():
-            T_0_sensor = rob.get_pose().array @ T_rob_sensor
+            T_0_sensor = rokae.pose.T_matrix() @ T_rob_sensor
             R_0_sensor = T_0_sensor[:3,:3]
             F_now = F_sensor.pure_force_now(R_0_sensor)
             force = F_now[:3]
@@ -108,9 +119,11 @@ if __name__ == "__main__":
                 if np.linalg.norm(torque) <= friction_angular:
                     acceleration_angular == np.array([0.0, 0.0, 0.0])
                 else:
-                    acceleration_angular= (torque - friction_angular * torque/np.linalg.norm(torque) )/I_rotation * acceleration_angular_rate
+                    # acceleration_angular= (torque - friction_angular * torque/np.linalg.norm(torque) )/I_rotation * acceleration_angular_rate
+                    acceleration_angular= (I_matrix_inv @ (torque - friction_angular * torque/np.linalg.norm(torque) ) * acceleration_angular_rate).squeeze()
             else:
-                acceleration_angular= (torque - friction_angular * velocity_angular/np.linalg.norm(velocity_angular) - damping_angular * velocity_angular)/I_rotation * acceleration_angular_rate
+                # acceleration_angular= (torque - friction_angular * velocity_angular/np.linalg.norm(velocity_angular) - damping_angular * velocity_angular)/I_rotation * acceleration_angular_rate
+                acceleration_angular= (I_matrix_inv @ (torque - friction_angular * velocity_angular/np.linalg.norm(velocity_angular) - damping_angular * velocity_angular) * acceleration_angular_rate).squeeze()
             
             delta_velocity_linear = acceleration_linear * time_step
             delta_velocity_angular = acceleration_angular * time_step
@@ -162,7 +175,7 @@ if __name__ == "__main__":
                 count = 0
                 # rob.my_speedl(velocity_linear.tolist()+[0, 0, 0],0.5,0.2)
                 # rob.my_speedl([0,0,0]+velocity_angular.tolist(),0.5,0.2)
-                rob.my_speedl(velocity_linear.tolist()+velocity_angular.tolist(),0.5,0.2)
+                rokae.cv_cmd(velocity_linear.tolist()+velocity_angular.tolist())
                 pub_Twist.publish(msg_TwistStamped)
 
 
@@ -177,6 +190,6 @@ if __name__ == "__main__":
     finally:
         keyboard_monitor.monitor_stop()
         rospy.signal_shutdown("Shutdown signal received.")
-        rob.close()
+        rokae.cv_stop()
 
 

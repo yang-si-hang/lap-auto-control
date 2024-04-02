@@ -82,7 +82,7 @@ class BotaSerialSensor:
     # Note that the time step is set according to the sinc filter size!
     time_step = 0.01
 
-    def __init__(self,port = '/dev/ttyACM0'):
+    def __init__(self,port = '/dev/ttyACM0'): #方便调试可以使用软件 ubuntu:cutecom
         rospy.init_node('BotaSerialSensor')
         self._port = port
         self._ser = serial.Serial()
@@ -355,3 +355,6 @@ if __name__ == '__main__':
     except BotaSerialSensorError as expt:
         print('bota_serial_example failed: ' + expt.message)
         sys.exit(1)
+    
+
+    print("Bota Pub Finished")

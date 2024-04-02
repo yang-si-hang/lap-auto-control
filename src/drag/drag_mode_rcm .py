@@ -10,7 +10,6 @@ import rospy
 from rospy.numpy_msg import numpy_msg
 from rospy_tutorials.msg import Floats
 from std_msgs.msg import Int8
-import urx
 import time
 import logging
 import sys
@@ -32,6 +31,10 @@ import drag.force_sensor_receiver as force_sensor_receiver
 sys.path.append(f"{os.path.dirname(__file__)}/../../scripts/my_tools")
 import key_signal
 
+sys.path.append(f"{os.path.dirname(__file__)}/../../scripts")
+import rokae_basic_fun 
+
+
 force_threshold = 5
 torque_threshold = 0.2
 
@@ -39,7 +42,15 @@ friction_linear = 1
 friction_angular = 0.05
 
 mass = 0.5
-I_rotation = 0.6
+# I_rotation = 0.6
+I_rotation_x = 0.6
+I_rotation_y = 0.6
+I_rotation_z = 0.075
+I_matrix = np.zeros((3,3))
+I_matrix[0,0] = I_rotation_x
+I_matrix[1,1] = I_rotation_y
+I_matrix[2,2] = I_rotation_z
+I_matrix_inv = np.linalg.inv(I_matrix)
 
 velocity_linear = np.array([0.0, 0.0, 0.0])
 velocity_angular = np.array([0.0, 0.0, 0.0])
@@ -50,8 +61,13 @@ velocity_angular_norm = 0
 velocity_linear_limit = 0.1
 velocity_angular_limit = 10/180*math.pi
 
-damping_linear = 100
+damping_linear = 200
 damping_angular = 0.2
+damping_angular_matrix = np.zeros((3,3))
+damping_angular_matrix[0,0] = 0.2
+damping_angular_matrix[1,1] = 0.2
+damping_angular_matrix[2,2] = 0.2
+
 
 acceleration_linear = np.array([0.0, 0.0, 0.0])
 acceleration_angular = np.array([0.0, 0.0, 0.0])
@@ -60,10 +76,10 @@ acceleration_angular = np.array([0.0, 0.0, 0.0])
 
 keyboard_monitor = key_signal.keyboard_monitor_class()
 
-frequency = 500
+frequency_calculate = 500
 frequency_pub = 50
-pub_count = int(frequency/frequency_pub)
-time_step = 1.0/frequency
+pub_count = int(frequency_calculate/frequency_pub)
+time_step = 1.0/frequency_calculate
 
 
 T_0_rcm = lap_set.T_0_rcm
@@ -72,8 +88,8 @@ rcm_position = T_0_rcm[:3,3].squeeze()
 T_rob_sensor = lap_set.T_rob_sensor
 R_rob_sensor = T_rob_sensor[:3,:3]
 
-def point_to_rcm(rob):
-    T_0_rob = rob.get_pose().array
+def point_to_rcm(__rokae):
+    T_0_rob = __rokae.pose.T_matrix()
     z_now = T_0_rob[:3,2]
     z_desire = rcm_position - T_0_rob[:3,3]
     z_desire = z_desire/np.linalg.norm(z_desire)
@@ -90,29 +106,33 @@ def point_to_rcm(rob):
     transform_matrix[:3, :3] = np.array(rotation_matrix)
     T_desir =  transform_matrix @ T_0_rob
     T_desir[:3,3] = T_0_rob[:3,3]
-    trans = Trans(T_desir)
-    print(trans,'\n',T_desir)
-    rob.set_pose(trans, acc=0.5, vel=0.2) 
+    print(f'rcm position: {rcm_position}')
+    print(f'z_desire: {z_desire}')
+    print('T_desir','\n',T_desir)
+    rokae.cp_cmd(T_desir)
+  
 
 
 
 if __name__ == "__main__":
 
     rospy.init_node('drag_mode', anonymous=True)
-    rob = urx.Robot(lap_set.robot_ip)
-    rob.set_payload(1, (0, 0, 0.1))
+    rokae = rokae_basic_fun.rokae()
     F_sensor = force_sensor_receiver.force_sensor_receiver_class()
     pub_Twist = rospy.Publisher('TwistStamped_test',TwistStamped,queue_size=1)
     msg_TwistStamped = TwistStamped()
-    point_to_rcm(rob)
+    point_to_rcm(rokae)
+    rokae.cp_stop()
+    rokae.cv_stop()
     time.sleep(0.5)
 
-    rate = rospy.Rate(frequency)
+    print(f'======================= start drag ========================')
+    rate = rospy.Rate(frequency_calculate)
     try:
         count = 0
         while not rospy.is_shutdown():
-            print('==========================')
-            T_0_rob = rob.get_pose().array
+            # print('==========================')
+            T_0_rob = rokae.pose.T_matrix()
             T_0_sensor = T_0_rob @ T_rob_sensor
             R_0_sensor = T_0_sensor[:3,:3]
             vector_s_rcm = rcm_position - T_0_sensor[:3,3]
@@ -122,25 +142,26 @@ if __name__ == "__main__":
             F_now = F_sensor.pure_force_now(R_0_sensor)
             force = F_now[:3]
             torque = F_now[3:]
-            print(f'测量力:{np.linalg.norm(force)}\t测量力矩:{torque}')
+            # print(f'测量力:{np.linalg.norm(force)}\t测量力矩:{torque}')
             if np.linalg.norm(force) < force_threshold:
                 force = np.array([0.0, 0.0, 0.0])
-            else:
-                print(f'force {np.linalg.norm(force)} > force_threshold {force_threshold}!!!!!!!!')
+            # else:
+            #     print(f'force {np.linalg.norm(force)} > force_threshold {force_threshold}!!!!!!!!')
             if np.linalg.norm(torque) < torque_threshold:
                 torque = np.array([0.0, 0.0, 0.0])
             force_n =np.dot(force, vector_s_rcm_normalized) * vector_s_rcm_normalized
             force_tau = force - force_n
             torque_force_tau = np.cross(-vector_s_rcm, force_tau)  #以 rcm 为轴点的切向力的力矩
             torque = torque + torque_force_tau
-            print(f'切向力法向残余：{np.dot(force_tau,vector_s_rcm_normalized)}')
-            print(f'力：{force} \t力矩:{torque} = {torque-torque_force_tau} + {torque_force_tau}')
+            # print(f'切向力法向残余：{np.dot(force_tau,vector_s_rcm_normalized)}')
+            # print(f'力：{force} \t力矩:{torque} = {torque-torque_force_tau} + {torque_force_tau}')
 
             # 阻尼力，以及阻尼力产生的力矩
             force_damp_linear =  - damping_linear * velocity_linear
             force_damp_n = np.dot(force_damp_linear, vector_s_rcm_normalized) * vector_s_rcm_normalized
             force_damp_tau = force_damp_linear - force_damp_n
-            torque_damp_angular = -damping_angular * velocity_angular
+            torque_damp_angular = T_0_rob[:3,:3] @ (- damping_angular_matrix @ ( T_0_rob[:3,:3].T @ velocity_angular ))
+            # torque_damp_angular = -damping_angular * velocity_angular
             torque_damp_linear_tau = np.cross(-vector_s_rcm, force_damp_tau)
 
 
@@ -159,9 +180,11 @@ if __name__ == "__main__":
                 if np.linalg.norm(torque) <= friction_angular:
                     acceleration_angular == np.array([0.0, 0.0, 0.0])
                 else:
-                    acceleration_angular= (torque - friction_angular * torque/np.linalg.norm(torque) )/I_rotation
+                    # acceleration_angular= (torque - friction_angular * torque/np.linalg.norm(torque) )/I_rotation
+                    acceleration_angular= (I_matrix_inv @ (torque - friction_angular * torque/np.linalg.norm(torque) )).squeeze()
             else:
-                acceleration_angular= (torque - friction_angular * velocity_angular/np.linalg.norm(velocity_angular) + torque_damp_angular + torque_damp_linear_tau)/I_rotation
+                # acceleration_angular= (torque - friction_angular * velocity_angular/np.linalg.norm(velocity_angular) + torque_damp_angular + torque_damp_linear_tau)/I_rotation
+                acceleration_angular= (I_matrix_inv @ (torque - friction_angular * velocity_angular/np.linalg.norm(velocity_angular) + torque_damp_angular + torque_damp_linear_tau)).squeeze()
             
             delta_velocity_linear = acceleration_linear * time_step
             delta_velocity_angular = acceleration_angular * time_step
@@ -181,7 +204,7 @@ if __name__ == "__main__":
                     velocity_angular = np.array([0.0, 0.0, 0.0])
                 else:   
                     velocity_angular  += delta_velocity_angular
-                velocity_angular = np.array([0.0, 0.0, 0.0])
+                # velocity_angular = np.array([0.0, 0.0, 0.0])
             else:
                 velocity_angular  += delta_velocity_angular
 
@@ -204,8 +227,8 @@ if __name__ == "__main__":
             velocity_linear = velocity_linear + velocity_tau
             
 
-            print(  f'加速度:\t{acceleration_linear} \t{acceleration_angular} ')
-            print(  f'速度:\t{velocity_linear} \t{velocity_angular} ')
+            # print(  f'加速度:\t{acceleration_linear} \t{acceleration_angular} ')
+            # print(  f'速度:\t{velocity_linear} \t{velocity_angular} ')
 
             msg_TwistStamped.header.stamp = rospy.Time.now()
             msg_TwistStamped.twist.linear.x = velocity_linear[0]
@@ -219,7 +242,8 @@ if __name__ == "__main__":
                 count = 0
                 # rob.my_speedl(velocity_linear.tolist()+[0, 0, 0],0.5,0.2)
                 # rob.my_speedl([0,0,0]+velocity_angular.tolist(),0.5,0.2)
-                rob.my_speedl(velocity_linear.tolist()+velocity_angular.tolist(),0.5,0.2)
+                # rob.my_speedl(velocity_linear.tolist()+velocity_angular.tolist(),0.5,0.2)
+                rokae.cv_cmd(velocity_linear.tolist()+velocity_angular.tolist())
                 pub_Twist.publish(msg_TwistStamped)
 
 
@@ -234,6 +258,6 @@ if __name__ == "__main__":
     finally:
         keyboard_monitor.monitor_stop()
         rospy.signal_shutdown("Shutdown signal received.")
-        rob.close()
+        rokae.stop()
 
 
