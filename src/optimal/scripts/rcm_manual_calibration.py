@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #对rcm点和rcm坐标进行标定
-import urx
+# import urx
 import signal
 import sys
 import numpy as np
@@ -11,10 +11,12 @@ import tty
 import termios
 
 import os
-
+import rospy
 sys.path.append(f'{os.path.dirname(__file__)}/../src/optimal/scripts')
 from lap_set_pk import lap_set
 
+sys.path.append(f"{os.path.dirname(__file__)}/../../../scripts")
+import rokae_basic_fun 
 
 coordinate_set_path = lap_set.coordinate_set_path
 camera_rcm_pose_file = lap_set.camera_rcm_pose_file
@@ -74,12 +76,12 @@ class keyboard_monitor_class(object):
 
 
 def main():
+    rospy.init_node('rcm_manual_calibration')
     
     keyboard_monitor = keyboard_monitor_class()
 
-    rob = urx.Robot(lap_set.robot_ip)
-    rob.set_tcp((0, 0, 0, 0, 0, 0)) 
-    rob.set_payload(0.02, (0, 0, 0.05))
+    rokae = rokae_basic_fun.rokae()
+
 
     tool_tip = lap_set.tool_tip
     T_rob_tool = lap_set.T_rob_tool
@@ -99,20 +101,20 @@ def main():
 
                 if input_data == 'l':
                     print("左侧 rcm 点位置：")
-                    rcm_l_point = np.squeeze(rob.get_pose().array @ tool_tip)
+                    rcm_l_point = np.squeeze(rokae.pose.T_matrix() @ tool_tip)
                     print(f"{rcm_l_point}\n")
                     write_file(left_rcm_p_file,rcm_l_point)
 
 
                 elif input_data == 'r':
                     print("右侧 rcm 点位置：")
-                    rcm_r_point = np.squeeze(rob.get_pose().array @ tool_tip)
+                    rcm_r_point = np.squeeze(rokae.pose.T_matrix() @ tool_tip)
                     print(f"{rcm_r_point}\n")
                     write_file(right_rcm_p_file,rcm_r_point)
 
                 elif input_data == 'c':
                     print("腹腔镜 rcm 点位姿：")
-                    rcm_c_pose = np.squeeze(rob.get_pose().array @ T_rob_tool )
+                    rcm_c_pose = np.squeeze(rokae.pose.T_matrix() @ T_rob_tool )
                     print(f"{rcm_c_pose}\n")
                     write_file(camera_rcm_pose_file,rcm_c_pose)
                     
@@ -136,7 +138,6 @@ def main():
     # 恢复终端设置
     finally:
         keyboard_monitor.monitor_stop()
-        rob.close()
 
         
 

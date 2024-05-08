@@ -6,7 +6,7 @@
 ./Camera_Calibration_calculate.py
 '''
 
-import urx
+# import urx
 import math3d as m3d
 import numpy as np
 import time
@@ -20,9 +20,13 @@ import sys
 import select
 import tty
 import termios
+import rospy
 
 sys.path.append("/home/yiliao/wyh/laparoscope_ws/src/optimal/scripts")
 from lap_set_pk import lap_set
+
+sys.path.append(f"{os.path.dirname(__file__)}/../../../scripts")
+import rokae_basic_fun 
 
 Capturing = 0
 Capture_stop = 0
@@ -63,7 +67,7 @@ def keyboard_interrupt(signal, frame):
 
 
 if __name__ == '__main__':
-
+    rospy.init_node('camera_calibration_manual')
     cap = cv.VideoCapture(0)
     
     # cap.set(cv.CAP_PROP_FOURCC, cv.VideoWriter_fourcc('M', 'J', 'P', 'G'))
@@ -80,11 +84,15 @@ if __name__ == '__main__':
 
 
     img_path = f'{os.path.dirname(__file__)}/../data/Camera_Calibration/imgs/'
+    joints_path = f'{os.path.dirname(__file__)}/../data/Camera_Calibration/joints/'
+    joints_file = f'{joints_path}rokae_test.txt'
     T_path = f'{os.path.dirname(__file__)}/../data/Camera_Calibration/RobotPose.csv'
 
-    rob = urx.Robot(lap_set.robot_ip)
-    rob.set_tcp((0, 0, 0, 0, 0, 0)) 
-    rob.set_payload(2, (0, 0, 0.1))
+    file = open(joints_file, 'a')
+    file.truncate(0)
+
+    rokae = rokae_basic_fun.rokae()
+
     time.sleep(0.2)
 
 
@@ -118,8 +126,13 @@ if __name__ == '__main__':
                
                 print("capturing step: ",step_i)
 
-                trans_read = rob.get_pose()
-                pose_read_array = trans_read.array
+                # trans_read = rob.get_pose()
+                pose_read_array = rokae.pose.T_matrix()
+                joints = rokae.JointState.position
+                
+                joints_str = ', '.join(str(elem) for elem in joints)
+                joints_str = f'{joints_str}\n'
+                file.write(joints_str)
                 for j in range(4):
                     for k in range(4):
                         Note.write(str(pose_read_array[j,k])+',')
@@ -148,6 +161,7 @@ if __name__ == '__main__':
     # 程序中断处理        
     except KeyboardInterrupt:
         print("Keyboard Interrupt detected!")
+        file.close()
        
 
     # 恢复终端设置
@@ -160,7 +174,7 @@ if __name__ == '__main__':
     # print(trans.array)
     # rob.movel((0.05, 0, 0, 0, 0, 0), 0.5, 0.1, relative=True) 
     # rob.my_speedl([0, 0, 0.01, 0, 0, 0],0.5,3)
-    rob.close()
+    rokae.cp_stop()
     Capture_stop = 1
     Note.close()
     print('program closed')

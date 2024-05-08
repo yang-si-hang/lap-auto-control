@@ -37,9 +37,12 @@ class rokae:
 
         self._frequency = 1000
 
-        
 
+        print(f'self.pose.position.x：{self.pose.position.x} ') #None
+
+        #死循环
         while self.pose.position.x is None:
+            # print('rokae robot 123...')
             pass
 
         self.cp_stop()
@@ -105,6 +108,7 @@ class rokae:
         # print(f'{self.JointState}')
 
     def CarteisianPose_callback(self,msg):
+        # print('rokae pose updated')
         self.pose.position.x = msg.pose.position.x
         self.pose.position.y = msg.pose.position.y
         self.pose.position.z = msg.pose.position.z
@@ -296,7 +300,7 @@ class rokae:
         if steps == 0:
             steps = 1
         msg_pub = JointState()
-        print(f'start_joints: {start_joints}\ndesire_joints:{desire_joints}\ndelta_max:{delta_max:.6f} rad ({delta_max/math.pi*180.0}°)\nsteps:{steps}')
+        # print(f'start_joints: {start_joints}\ndesire_joints:{desire_joints}\ndelta_max:{delta_max:.6f} rad ({delta_max/math.pi*180.0}°)\nsteps:{steps}')
         
         time_start = time.time()
         rate = rospy.Rate(self._frequency)

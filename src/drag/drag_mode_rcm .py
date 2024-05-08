@@ -1,5 +1,7 @@
 '''
 仅由角加速度推算切向加速度
+
+rcm纠偏，以末端z轴作为腹腔镜轴线
 '''
 
 import os.path
@@ -18,7 +20,7 @@ from math3d.transform import Transform as Trans
 from scipy.spatial.transform import Rotation
 import math3d as m3d
 import random
-from geometry_msgs.msg import TwistStamped
+from geometry_msgs.msg import TwistStamped, Point
 
 np.set_printoptions(precision=6, suppress=True)
 
@@ -33,6 +35,26 @@ import key_signal
 
 sys.path.append(f"{os.path.dirname(__file__)}/../../scripts")
 import rokae_basic_fun 
+
+
+__save_data = True
+
+data_fold = f"{os.path.dirname(__file__)}/data/"
+force_path = f'{data_fold}force.txt'
+pose_path = f'{data_fold}pose.txt'
+rcm_error_path = f'{data_fold}rcm_error.txt'
+acceleration_linear_path = f'{data_fold}acceleration_linear.txt'
+acceleration_angular_path = f'{data_fold}acceleration_angular.txt'
+velocity_linear_path = f'{data_fold}velocity_linear.txt'
+velocity_angular_path = f'{data_fold}velocity_angular.txt'
+
+force_list = []
+pose_list = []
+rcm_error_list = []
+acceleration_linear_list = []
+acceleration_angular_list = []
+velocity_linear_list = []
+velocity_angular_list = []
 
 
 force_threshold = 5
@@ -61,13 +83,19 @@ velocity_angular_norm = 0
 velocity_linear_limit = 0.1
 velocity_angular_limit = 10/180*math.pi
 
-damping_linear = 200
+
+# 200
+damping_linear = 100
+damping_linear_z = 20
 damping_angular = 0.2
 damping_angular_matrix = np.zeros((3,3))
 damping_angular_matrix[0,0] = 0.2
 damping_angular_matrix[1,1] = 0.2
 damping_angular_matrix[2,2] = 0.2
 
+rcm_error_velocity = np.array([0.0, 0.0, 0.0])
+rcm_velocity_rate = 1.0/2.5
+rcm_error_threshold = 0.005
 
 acceleration_linear = np.array([0.0, 0.0, 0.0])
 acceleration_angular = np.array([0.0, 0.0, 0.0])
@@ -120,6 +148,7 @@ if __name__ == "__main__":
     rokae = rokae_basic_fun.rokae()
     F_sensor = force_sensor_receiver.force_sensor_receiver_class()
     pub_Twist = rospy.Publisher('TwistStamped_test',TwistStamped,queue_size=1)
+    pub_rcm_error = rospy.Publisher('rcm_error',Point,queue_size=1)
     msg_TwistStamped = TwistStamped()
     point_to_rcm(rokae)
     rokae.cp_stop()
@@ -157,7 +186,12 @@ if __name__ == "__main__":
             # print(f'力：{force} \t力矩:{torque} = {torque-torque_force_tau} + {torque_force_tau}')
 
             # 阻尼力，以及阻尼力产生的力矩
-            force_damp_linear =  - damping_linear * velocity_linear
+            velocity_linear_rob = T_0_rob[:3,:3].T @ velocity_linear
+            force_damp_linear_rob = - np.array([[damping_linear,0,0],[0,damping_linear,0],[0,0,damping_linear_z]]) @ velocity_linear_rob
+            force_damp_linear = T_0_rob[:3,:3] @ force_damp_linear_rob
+
+
+            # force_damp_linear =  - damping_linear * velocity_linear
             force_damp_n = np.dot(force_damp_linear, vector_s_rcm_normalized) * vector_s_rcm_normalized
             force_damp_tau = force_damp_linear - force_damp_n
             torque_damp_angular = T_0_rob[:3,:3] @ (- damping_angular_matrix @ ( T_0_rob[:3,:3].T @ velocity_angular ))
@@ -226,27 +260,55 @@ if __name__ == "__main__":
             velocity_tau = np.cross(velocity_angular, -vector_rob_rcm)  #在 rcm 约束下，旋转带来的机械臂末端速度
             velocity_linear = velocity_linear + velocity_tau
             
+            vector_rob_z = T_0_rob[:3,2].squeeze()
+            foot_position = T_0_rob[:3,3].squeeze() + vector_rob_z * np.dot(vector_rob_z, vector_rob_rcm)
+            rcm_error = foot_position - rcm_position  #由rcm点指向腔镜轴线上的垂足
+
+            if np.linalg.norm(rcm_error) > rcm_error_threshold:
+                rcm_error_velocity = - rcm_velocity_rate * rcm_error
+            else:
+                rcm_error_velocity = np.array([0,0,0])
+
+            
+            print(f'rcm_error: {rcm_error} ({np.linalg.norm(rcm_error)}) \tvelocity: {rcm_error_velocity}')
+
+
 
             # print(  f'加速度:\t{acceleration_linear} \t{acceleration_angular} ')
             # print(  f'速度:\t{velocity_linear} \t{velocity_angular} ')
 
-            msg_TwistStamped.header.stamp = rospy.Time.now()
-            msg_TwistStamped.twist.linear.x = velocity_linear[0]
-            msg_TwistStamped.twist.linear.y = velocity_linear[1]
-            msg_TwistStamped.twist.linear.z = velocity_linear[2]
-            msg_TwistStamped.twist.angular.x = velocity_angular[0]
-            msg_TwistStamped.twist.angular.x = velocity_angular[1]
-            msg_TwistStamped.twist.angular.x = velocity_angular[2]
+            # --- 用于观测 rcm 补偿速度（不影响运动，仅用于观测）
+            # msg_TwistStamped.header.stamp = rospy.Time.now()
+            # msg_TwistStamped.twist.linear.x = rcm_error_velocity[0]
+            # msg_TwistStamped.twist.linear.y = rcm_error_velocity[1]
+            # msg_TwistStamped.twist.linear.z = rcm_error_velocity[2]
+            # pub_Twist.publish(msg_TwistStamped)
+
+            # --- 用于观测 rcm_error（不影响运动，仅用于观测）
+            # msg_rcm_error = Point()
+            # msg_rcm_error.x = rcm_error[0]
+            # msg_rcm_error.y = rcm_error[1]
+            # msg_rcm_error.z = rcm_error[2]
+            # pub_rcm_error.publish(msg_rcm_error)
+
+
             count += 1
             if count >= pub_count:
                 count = 0
                 # rob.my_speedl(velocity_linear.tolist()+[0, 0, 0],0.5,0.2)
                 # rob.my_speedl([0,0,0]+velocity_angular.tolist(),0.5,0.2)
                 # rob.my_speedl(velocity_linear.tolist()+velocity_angular.tolist(),0.5,0.2)
-                rokae.cv_cmd(velocity_linear.tolist()+velocity_angular.tolist())
-                pub_Twist.publish(msg_TwistStamped)
+                rokae.cv_cmd((velocity_linear + rcm_error_velocity).tolist()+velocity_angular.tolist() )
 
-
+                if __save_data:
+                    pose_list.append(np.concatenate((rokae.pose.position.array(),rokae.pose.orientation.array())).squeeze())
+                    force_list.append(np.array(F_now).squeeze())
+                    rcm_error_list.append(np.linalg.norm(rcm_error))
+                    # acceleration_linear_list.append()
+                    # acceleration_angular_list = []
+                    velocity_linear_list.append(velocity_linear.squeeze())
+                    velocity_angular_list.append(velocity_angular.squeeze())
+                    
 
             rate.sleep()
 

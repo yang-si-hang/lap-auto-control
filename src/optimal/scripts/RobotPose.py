@@ -4,7 +4,7 @@ import numpy as np
 import rospy
 from rospy.numpy_msg import numpy_msg
 from rospy_tutorials.msg import Floats
-import urx
+# import urx
 import time
 import logging
 import sys
@@ -13,6 +13,9 @@ from math3d.transform import Transform as Trans
 
 sys.path.append("/home/yiliao/wyh/laparoscope_ws/src/optimal/scripts")
 from lap_set_pk import lap_set
+
+sys.path.append(f"{os.path.dirname(__file__)}/../../../scripts")
+import rokae_basic_fun 
 
 np.set_printoptions(precision=5, suppress=True)
 
@@ -62,16 +65,15 @@ def main():
     r = rospy.Rate(30)
 
     logging.basicConfig(level=logging.WARN)
-    rob = urx.Robot(lap_set.robot_ip)
-    # rob.set_tcp((0,0,0,0,0,0))
-    rob.set_tcp(tcp_pose) #设置为了shaft
-    rob.set_payload(0.5, (0, 0, 0))
+    rokae = rokae_basic_fun.rokae()
+
+
 
     try:
         while not rospy.is_shutdown():
-            pose = rob.getl()
-            pose_array = np.array(pose, dtype=np.float32)
-            print(Trans(pose))
+
+            pose_array = rokae.pose.T_matrix()
+            print(pose_array)
 
             # T_b_s = Trans.get_array(Trans(pose_array))
             # T_0_c = left_base @ T_b_s @ trotx(-q0)
@@ -82,9 +84,9 @@ def main():
             # print(T_r_e)
 
     except KeyboardInterrupt:
-        rob.close()
+        rokae.stop()
     finally:
-        rob.close()
+        rokae.stop()
     return
 
 

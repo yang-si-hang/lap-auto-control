@@ -12,7 +12,7 @@ import numpy as np
 import rospy
 from rospy.numpy_msg import numpy_msg
 from rospy_tutorials.msg import Floats
-import urx
+# import urx
 import time
 import logging
 import sys

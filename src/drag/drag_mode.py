@@ -6,7 +6,7 @@ import rospy
 from rospy.numpy_msg import numpy_msg
 from rospy_tutorials.msg import Floats
 from std_msgs.msg import Int8
-import urx
+# import urx
 import time
 import logging
 import sys
@@ -56,8 +56,8 @@ velocity_angular_rate = 1
 velocity_linear_limit = 0.2
 velocity_angular_limit = 30/180*math.pi
 
-damping_linear = 2650
-damping_angular = 2.0
+damping_linear = 2550
+damping_angular = 1.7
 
 acceleration_linear = np.array([0.0, 0.0, 0.0])
 acceleration_angular = np.array([0.0, 0.0, 0.0])

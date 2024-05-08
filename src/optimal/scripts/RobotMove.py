@@ -8,7 +8,7 @@ import rospy
 from rospy.numpy_msg import numpy_msg
 from rospy_tutorials.msg import Floats
 from std_msgs.msg import Int8
-import urx
+# import urx
 import time
 import logging
 import sys
@@ -18,6 +18,9 @@ np.set_printoptions(precision=6, suppress=True)
 
 sys.path.append("/home/irobotcare/wyh/laparoscope_ws/src/optimal/scripts")
 from lap_set_pk import lap_set
+
+sys.path.append(f"{os.path.dirname(__file__)}/../../../scripts")
+import rokae_basic_fun 
 
 path = os.path.dirname(__file__)
 
@@ -161,9 +164,7 @@ def main():
 
 
     logging.basicConfig(level=logging.WARN)
-    rob = urx.Robot(lap_set.robot_ip)
-    rob.set_tcp((0,0,0,0,0,0)) #暂时设置为0，到达初始位姿后，会重设 tcp
-    rob.set_payload(0.5, (0,0,0))
+    rokae = rokae_basic_fun.rokae()
     # rob.my_speedl_tool
     v = 0.01
     a = 0.3
@@ -171,11 +172,11 @@ def main():
         print("======= pose1 ======")
         print(Trans(pose1).array)
 
-        rob.movel(pose1, acc=a, vel=v)
+        # rob.movel(pose1, acc=a, vel=v)
+        rokae.cp_cmd(Trans(pose1).array)
 
     
-    rob.set_tcp(tcp_pose)
-    rob.set_payload(0.5, (0,0,0))
+
 
     
     i = 0
@@ -233,11 +234,12 @@ def main():
                 exit(0)
 
     except KeyboardInterrupt:
-        rob.close()
+        rokae.stop()
     except SystemExit:
-        rob.close()
+        rokae.stop()
     finally:
-        rob.close()
+        rokae.stop()
+
 
     return
 

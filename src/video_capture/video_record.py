@@ -140,7 +140,9 @@ if __name__ == '__main__':
             if lap_set.rgb2bgr:
                 frame = frame[:, :, [2, 1, 0]]
 
+            cv2.imshow('Frame', frame)
             output.write(frame)
+            cv2.waitKey(1)
             data = f'{time_stamp}\n'
             video_time_stamp_file.write(data)
             record_time_length = time_stamp - record_start_time
