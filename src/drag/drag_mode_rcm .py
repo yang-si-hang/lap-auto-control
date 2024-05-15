@@ -67,7 +67,7 @@ mass = 0.5
 # I_rotation = 0.6
 I_rotation_x = 0.6
 I_rotation_y = 0.6
-I_rotation_z = 0.075
+I_rotation_z = 0.05
 I_matrix = np.zeros((3,3))
 I_matrix[0,0] = I_rotation_x
 I_matrix[1,1] = I_rotation_y
@@ -85,9 +85,9 @@ velocity_angular_limit = 10/180*math.pi
 
 
 # 200
-damping_linear = 100
-damping_linear_z = 20
-damping_angular = 0.2
+damping_linear = 200
+damping_linear_z = 100
+# damping_angular = 0.2
 damping_angular_matrix = np.zeros((3,3))
 damping_angular_matrix[0,0] = 0.2
 damping_angular_matrix[1,1] = 0.2
@@ -152,6 +152,7 @@ if __name__ == "__main__":
     msg_TwistStamped = TwistStamped()
     point_to_rcm(rokae)
     rokae.cp_stop()
+    time.sleep(0.5)
     rokae.cv_stop()
     time.sleep(0.5)
 
@@ -321,5 +322,13 @@ if __name__ == "__main__":
         keyboard_monitor.monitor_stop()
         rospy.signal_shutdown("Shutdown signal received.")
         rokae.stop()
+
+        if __save_data:
+            np.savetxt(pose_path, np.array(pose_list), delimiter=',')
+            np.savetxt(force_path, np.array(force_list), delimiter=',')
+            np.savetxt(rcm_error_path, np.array(rcm_error_list), delimiter=',')
+            np.savetxt(velocity_angular_path, np.array(velocity_angular_list), delimiter=',')
+            np.savetxt(velocity_linear_path, np.array(velocity_linear_list), delimiter=',')
+
 
 
