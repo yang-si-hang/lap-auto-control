@@ -1,9 +1,8 @@
 '''
-记得提前将存储位置老文件清空（不需要清空了，变换矩阵直接覆盖了）
-要清空： ../data/Camera_Calibration/imgs/  （如果图片数量一样会直接覆盖，原有多的不会覆盖） 
-
-不进行运算，运算在
-./Camera_Calibration_calculate.py
+用于眼和机械臂分别固连在h世界的情况，注意眼不在手上。
+机械臂末端固连观测目标，B
+calibrate_calculate() 用于直接传入测得的机械臂末端变换矩阵和眼观测的目标位姿，解算手眼相对位姿
+shiu() 用于解算 AX=XB 方程组
 '''
 
 import numpy as np
@@ -136,7 +135,7 @@ async def move_and_measure():
         # )
 
 
-        
+        #此处只特定刚体 rigid_calibrate
         rigid_index = body_index[rigid_calibrate]
         position, rotation = bodies[rigid_index]
         
@@ -156,7 +155,7 @@ async def move_and_measure():
         # q = r2q(R)
         # print("q: ",q)
 
-        '''       xyz、                                                      wxyz、'''
+        '''数据字符串 xyz、                                                      wxyz、'''
         # data = f'{position[0]/1000},{position[1]/1000},{position[2]/1000},\t{q[0]},{q[1]},{q[2]},{q[3]}\n'
     
         # if not np.isnan(position[0]): print(f'{data}')
@@ -177,7 +176,7 @@ async def move_and_measure():
     for i in range(num_of_pose):
         print(f'--- step {i} ---')
         rokae.jp_cmd(move_joints[i, :])
-        await asyncio.sleep(1)
+        await asyncio.sleep(1) #此异步期间会进行on_packet，更新 quealisys 数据
 
         T_0_rob_catted[:, 4*i : 4*i+4] = rokae.pose.T_matrix()
         T_cam_rigid_catted[:, 4*i : 4*i+4] = T_cam_rigid

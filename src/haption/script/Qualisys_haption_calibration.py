@@ -1,11 +1,7 @@
 '''
-记得提前将存储位置老文件清空（不需要清空了，变换矩阵直接覆盖了）
-要清空： ../data/Camera_Calibration/imgs/  （如果图片数量一样会直接覆盖，原有多的不会覆盖） 
-
-不进行运算，运算在
-./Camera_Calibration_calculate.py
+用于眼和机械臂分别固连在h世界的情况，注意眼不在手上。
+机械臂末端固连观测目标，B
 '''
-
 import numpy as np
 import time
 import time,os
