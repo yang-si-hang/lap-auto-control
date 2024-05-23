@@ -56,7 +56,7 @@ img_points = []     # 存储2D点
 
 images = glob.glob(f'{os.path.dirname(__file__)}/../data/Camera_Calibration/imgs/*.png')
 images = sorted(images)  #按照文件名排序，数字的位数不同会乱，可以使用 str（int）.zfill（3）将整数前补0化为固定位数 001
-print(images)
+print(f'图片路径：{images[0]}\n图片数量：{len(images)}')
 
 # images = images[::-1]
 i = 0
