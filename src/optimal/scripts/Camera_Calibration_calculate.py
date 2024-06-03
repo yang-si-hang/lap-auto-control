@@ -33,14 +33,14 @@ tool_pos_path = f'{os.path.dirname(__file__)}/../data/Camera_Calibration/RobotPo
 # XX = 8  #9*12的板子如此设置
 # YY = 11
 # L = 0.03
-# black_background = True #黑色背景（黑色外圈的）后续转换为白色底
+# black_background = True  #黑色背景为true（黑色外圈的），若果为黑色背景后续会转换为白色底
 # 小标定板----------------------------------------
 # XX = 8
 # YY = 11
 XX = 11
 YY = 8
 L = 0.015
-black_background = False #黑色背景（黑色外圈的）后续转换为白色底
+black_background = False  #黑色背景为true（黑色外圈的），若果为黑色背景后续会转换为白色底
 # =======================================================================
 
 # 设置寻找亚像素角点的参数，采用的停止准则是最大循环次数30和最大误差容限0.001
@@ -90,7 +90,7 @@ for fname in images:
             img_points.append(corners)
 
         cv2.drawChessboardCorners(img, (XX, YY), corners, ret)
-        # 红色为第一个点，蓝色为最后一个点，先X轴再Y轴
+        # 红色为第一行点，蓝色为最后一行点，数点先X轴再Y轴，一行有XX个点
         cv2.imwrite(f'{os.path.dirname(__file__)}/../data/Camera_Calibration/figure_save/{i}.jpg', img)
         i = i+1
         # cv2.imshow('img', img)
@@ -142,7 +142,7 @@ for i in range(N-1):
     T_save[:, 4 * i:4 * (i + 1)] = T[i] @ np.linalg.inv(T[i + 1])
     # print(np.linalg.inv(T[i]) @ T[i+1])
 
-np.savetxt(f'{os.path.dirname(__file__)}/../data/Camera_Calibration/M2.csv', T_save)
+np.savetxt(f'{os.path.dirname(__file__)}/../data/Camera_Calibration/temp/M2.csv', T_save)
 
 # 机器人末端在基座标系下的位姿
 # tool_pose = np.loadtxt(f'{os.path.dirname(__file__)}/../data/Camera_Calibration/RobotPose.csv')

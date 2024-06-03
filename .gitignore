@@ -176,6 +176,7 @@ src/vedio_capture/ffmpeg.exe
 src/optimal/data/Camera_Calibration/imgs/
 src/optimal/data/Camera_Calibration/figure_save/
 src/optimal/data/Camera_Calibration/figure_undist/
+src/optimal/data/Camera_Calibration/figure_test/
 src/optimal/data/Camera_Calibration/figure_save/0.jpg
 src/optimal/data/Camera_Calibration/figure_save/1.jpg
 src/optimal/data/Camera_Calibration/figure_save/2.jpg
