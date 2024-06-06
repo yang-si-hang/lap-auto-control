@@ -24,7 +24,7 @@ video_height = 1080
 video_fps = 30.0
 
 # ------------------------------------------ 动捕 ------------------------------------------
-qualisys_master_ip = "192.168.253.1"
+qualisys_master_ip = "192.168.254.1"
 qualisys_password = ''
 qtm_rigid_file_path = '/home/irobotcare/桌面/EX_Data/lap/test/rigid.txt'
 rigid_end_record_file_path = '/home/irobotcare/桌面/EX_Data/lap/test/rigid_end.txt'

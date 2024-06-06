@@ -19,7 +19,8 @@ import asyncio
 import math
 from scipy.linalg import logm
 
-sys.path.append("/home/yiliao/wyh/laparoscope_ws/src/optimal/scripts")
+# sys.path.append("/home/yiliao/wyh/laparoscope_ws/src/optimal/scripts")
+sys.path.append(f"{os.path.dirname(__file__)}/../../optimal/scripts")
 from lap_set_pk import lap_set
 
 sys.path.append(f"{os.path.dirname(__file__)}/../../../scripts")

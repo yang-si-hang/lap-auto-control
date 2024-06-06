@@ -65,7 +65,7 @@ async def main():
     global msg_finished_flag
     # Connect to qtm
     # connection = await qtm_rt.connect("127.0.0.1")
-    connection = await qtm_rt.connect(lap_set.qualisys_master_ip)
+    connection = await qtm_rt.connect(lap_set.qualisys_master_ip)  #Qualisys QTM 主机IP
 
     # Connection failed?
     if connection is None:

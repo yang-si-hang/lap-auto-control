@@ -17,7 +17,7 @@ from scipy.linalg import logm
 from geometry_msgs.msg import PoseStamped
 
 
-sys.path.append("/home/yiliao/wyh/laparoscope_ws/src/optimal/scripts")
+sys.path.append(f"{os.path.dirname(__file__)}/../../optimal/scripts")
 from lap_set_pk import lap_set
 
 sys.path.append(f"{os.path.dirname(__file__)}/../../../scripts/my_tools")
@@ -26,6 +26,7 @@ import key_signal,eye_hand_calibrate
 haption_pose = PoseStamped()
 def haption_pose_callback(msg):
     haption_pose = msg
+    # print(msg)
 
 
 rigid_calibrate = 'calibrate'
@@ -72,7 +73,7 @@ def body_enabled_count(xml_string):
     return sum(enabled.text == "true" for enabled in xml.findall("*/Body/Enabled"))
 
 async def move_and_measure():
-    global T_0_rob_list, T_cam_rigid_list
+    global T_0_rob_list, T_cam_rigid_list,haption_pose
     keyboard_monitor = key_signal.keyboard_monitor_class()
 
     # Connect to qtm
@@ -109,7 +110,7 @@ async def move_and_measure():
 
 
     def on_packet(packet):
-
+        global haption_pose
 
         info, bodies = packet.get_6d()
         # print(
@@ -161,10 +162,14 @@ async def move_and_measure():
                 if input_data == '\n':
                     
                     await asyncio.sleep(1)
+                    print(f'记录当前数据')
+                    print(f'T_cam_rigid:\n{T_cam_rigid}')
                     R = q2r([haption_pose.pose.orientation.w,haption_pose.pose.orientation.x,haption_pose.pose.orientation.y,haption_pose.pose.orientation.z])
                     T = np.eye(4)
                     T[:3,:3] = R
-                    T[:3,3] = np.array([haption_pose.pose.position.x,haption_pose.pose.position.y,haption_pose.pose.position.z]).reshape(3,1)
+                    T[:3,3] = np.array([haption_pose.pose.position.x,haption_pose.pose.position.y,haption_pose.pose.position.z])
+                    print(f'T_0_rob:\n{T}')
+                    print(haption_pose)
                     T_0_rob_list.append(T)
                     T_cam_rigid_list.append(T_cam_rigid)
 
