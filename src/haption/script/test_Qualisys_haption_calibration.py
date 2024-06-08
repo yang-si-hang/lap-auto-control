@@ -24,7 +24,10 @@ sys.path.append(f"{os.path.dirname(__file__)}/../../../scripts/my_tools")
 import key_signal,eye_hand_calibrate
 
 haption_pose = PoseStamped()
+
+
 def haption_pose_callback(msg):
+    global haption_pose
     haption_pose = msg
     # print(msg)
 
@@ -75,38 +78,39 @@ def body_enabled_count(xml_string):
 async def move_and_measure():
     global T_0_rob_list, T_cam_rigid_list,haption_pose
     keyboard_monitor = key_signal.keyboard_monitor_class()
+    print(f'async move_and_measure: haption_pose:\n{haption_pose}')
 
     # Connect to qtm
     # connection = await qtm_rt.connect("127.0.0.1")
-    connection = await qtm_rt.connect(lap_set.qualisys_master_ip)
+    # connection = await qtm_rt.connect(lap_set.qualisys_master_ip)
 
     # Connection failed?
-    if connection is None:
-        print("Failed to connect")
-        return
+    # if connection is None:
+    #     print("Failed to connect")
+    #     return
 
     # Take control of qtm, context manager will automatically release control after scope end
     # async with qtm_rt.TakeControl(connection, "password"):
-    async with qtm_rt.TakeControl(connection, lap_set.qualisys_password):
+    # async with qtm_rt.TakeControl( lap_set.qualisys_password):
 
-        # realtime = False  #????
-        realtime = True
+    #     # realtime = False  #????
+    #     realtime = True
 
-        if realtime:
-            # Start new realtime
-            await connection.new()
-        else:
-            # Load qtm file
-            await connection.load(QTM_FILE)
+        # if realtime:
+        #     # Start new realtime
+        #     await connection.new()
+        # else:
+        #     # Load qtm file
+        #     await connection.load(QTM_FILE)
 
-            # start rtfromfile
-            await connection.start(rtfromfile=True)
+        #     # start rtfromfile
+        #     await connection.start(rtfromfile=True)
 
     # Get 6dof settings from qtm
-    xml_string = await connection.get_parameters(parameters=["6d"])
-    body_index = create_body_index(xml_string)
+    # xml_string = await connection.get_parameters(parameters=["6d"])
+    # body_index = create_body_index(xml_string)
 
-    print("{} of {} 6DoF bodies enabled".format(body_enabled_count(xml_string), len(body_index)))
+    # print("{} of {} 6DoF bodies enabled".format(body_enabled_count(xml_string), len(body_index)))
 
 
     def on_packet(packet):
@@ -120,27 +124,27 @@ async def move_and_measure():
         # )
 
 
-        rigid_index = body_index[rigid_calibrate]
-        position, rotation = bodies[rigid_index]
+        # rigid_index = body_index[rigid_calibrate]
+        # position, rotation = bodies[rigid_index]
         
-        R = np.array(rotation).reshape(3,3).T #R是反的，是刚体坐标系下相机坐标系的表达,经过此行.T后正常了R是相机坐标系下刚体的位姿
+        # R = np.array(rotation).reshape(3,3).T #R是反的，是刚体坐标系下相机坐标系的表达,经过此行.T后正常了R是相机坐标系下刚体的位姿
         
         T_cam_rigid[:3, :3] = R
-        T_cam_rigid[:3, 3] = np.array(position).squeeze()
+        # T_cam_rigid[:3, 3] = np.array(position).squeeze()
 
-        if not np.isnan(position[0]):  
+        # if not np.isnan(position[0]):  
             # print(f"{rigid_calibrate} \n{R}\n{position}")
             # print(f"{rigid_calibrate} get")
-            pass
+        #     pass
         
-        else:
-            print(f'can\'t get rigid message!!!')
+        # else:
+        #     print(f'can\'t get rigid message!!!')
 
 
         
 
     # Start streaming frames
-    await connection.stream_frames(components=["6d"], on_packet=on_packet)
+    # await connection.stream_frames(components=["6d"], on_packet=on_packet)
     
     # while not rospy.is_shutdown():
     # while True:
@@ -172,6 +176,8 @@ async def move_and_measure():
                     print(haption_pose)
                     T_0_rob_list.append(T)
                     T_cam_rigid_list.append(T_cam_rigid)
+                    print(f'------- wait for input -------')
+
 
 
      # 程序中断处理        
@@ -194,8 +200,12 @@ async def move_and_measure():
 
 
 
+
+
+    
+
     # Stop streaming
-    await connection.stream_frames_stop()
+    # await connection.stream_frames_stop()
 
 
 
@@ -203,7 +213,7 @@ async def move_and_measure():
 if __name__ == "__main__":
 
     rospy.init_node('qualisys_haption_calibration', anonymous=True)
-    rospy.Subscriber("/haption2/state/pose", PoseStamped, haption_pose_callback)
+    rospy.Subscriber("/haption2/state/pose", PoseStamped, haption_pose_callback, queue_size=1)
     time.sleep(1)
 
     
