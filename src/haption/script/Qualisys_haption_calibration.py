@@ -24,8 +24,13 @@ sys.path.append(f"{os.path.dirname(__file__)}/../../../scripts/my_tools")
 import key_signal,eye_hand_calibrate
 
 haption_pose = PoseStamped()
+msg_n = 0
 def haption_pose_callback(msg):
+    global msg_n,haption_pose
     haption_pose = msg
+    msg_n += 1
+    # if msg_n % 300 == 0:
+    #     print(f'received msg {msg_n}:\n{msg}')
     # print(msg)
 
 
@@ -75,6 +80,7 @@ def body_enabled_count(xml_string):
 async def move_and_measure():
     global T_0_rob_list, T_cam_rigid_list,haption_pose
     keyboard_monitor = key_signal.keyboard_monitor_class()
+
 
     # Connect to qtm
     # connection = await qtm_rt.connect("127.0.0.1")
