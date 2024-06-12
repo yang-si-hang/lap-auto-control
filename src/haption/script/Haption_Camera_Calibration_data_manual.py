@@ -11,8 +11,6 @@ import math3d as m3d
 import numpy as np
 import time
 import cv2 as cv
-import threading
-from threading import Lock,Thread
 import time,os
 
 import signal
@@ -21,12 +19,18 @@ import select
 import tty
 import termios
 import rospy
+from geometry_msgs.msg import PoseStamped
+from spatialmath.base import *
 
-sys.path.append(f"{os.path.dirname(__file__)}")
+
+sys.path.append(f"{os.path.dirname(__file__)}/../../optimal/scripts")
 from lap_set_pk import lap_set
 
-sys.path.append(f"{os.path.dirname(__file__)}/../../../scripts")
-import rokae_basic_fun 
+
+data_folder = f'{os.path.dirname(__file__)}/../data/Camera_Calibration'
+img_path = f'{data_folder}/imgs/'
+T_path = f'{data_folder}/pose/RobotPose.csv'
+
 
 Capturing = 0
 Capture_stop = 0
@@ -62,36 +66,39 @@ def keyboard_interrupt(signal, frame):
 
 
 
+haption_pose = PoseStamped()
+msg_n = 0
+def haption_pose_callback(msg):
+    global msg_n,haption_pose
+    haption_pose = msg
+    msg_n += 1
+    # if msg_n % 300 == 0:
+    #     print(f'received msg {msg_n}:\n{msg}')
+    # print(msg)
+
             
 
 
 
 if __name__ == '__main__':
-    rospy.init_node('camera_calibration_manual')
+    rospy.init_node('haption_camera_calibration_manual')
+    rospy.Subscriber("/haption2/state/pose", PoseStamped, haption_pose_callback)
+
+
     cap = cv.VideoCapture(0)
-    
     # cap.set(cv.CAP_PROP_FOURCC, cv.VideoWriter_fourcc('M', 'J', 'P', 'G'))
     # cap.set(cv.CAP_PROP_FPS, 30)
-    # cap.set(4, 1080)  # 图片宽度
-    # cap.set(3, 1920)  # 图片宽度
     cap.set(cv.CAP_PROP_FOURCC, cv.VideoWriter_fourcc('N', 'V', '1', '2'))
     cap.set(cv.CAP_PROP_FPS, 60)
-    cap.set(4, 1080)  # 图片宽度
-    cap.set(3, 1920)  # 图片宽度
+    cap.set(4, lap_set.video_height)  # 图片宽度
+    cap.set(3, lap_set.video_width)  # 图片宽度
     cv.namedWindow('figure', 0)
     cv.resizeWindow('figure', 960, 540)
 
 
+    T_0_rob = np.identity(4)
 
-    img_path = f'{os.path.dirname(__file__)}/../data/Camera_Calibration/imgs/'
-    joints_path = f'{os.path.dirname(__file__)}/../data/Camera_Calibration/joints/'
-    joints_file = f'{joints_path}rokae_test.txt'
-    T_path = f'{os.path.dirname(__file__)}/../data/Camera_Calibration/RobotPose.csv'
 
-    file = open(joints_file, 'a')
-    file.truncate(0)
-
-    rokae = rokae_basic_fun.rokae()
 
     time.sleep(0.2)
 
@@ -127,15 +134,16 @@ if __name__ == '__main__':
                 print("capturing step: ",step_i)
 
                 # trans_read = rob.get_pose()
-                pose_read_array = rokae.pose.T_matrix()
-                joints = rokae.JointState.position
+                T_0_rob[:3,:3] = q2r([haption_pose.pose.orientation.w, haption_pose.pose.orientation.x, haption_pose.pose.orientation.y, haption_pose.pose.orientation.z]) 
+                T_0_rob[0,3] = haption_pose.pose.position.x
+                T_0_rob[1,3] = haption_pose.pose.position.y
+                T_0_rob[2,3] = haption_pose.pose.position.z
+
                 
-                joints_str = ', '.join(str(elem) for elem in joints)
-                joints_str = f'{joints_str}\n'
-                file.write(joints_str)
+
                 for j in range(4):
                     for k in range(4):
-                        Note.write(str(pose_read_array[j,k])+',')
+                        Note.write(str(T_0_rob[j,k])+',')
                     Note.write('\n')
                 
                 print('pose_getted:',step_i)
@@ -161,7 +169,7 @@ if __name__ == '__main__':
     # 程序中断处理        
     except KeyboardInterrupt:
         print("Keyboard Interrupt detected!")
-        file.close()
+
        
 
     # 恢复终端设置
@@ -174,7 +182,7 @@ if __name__ == '__main__':
     # print(trans.array)
     # rob.movel((0.05, 0, 0, 0, 0, 0), 0.5, 0.1, relative=True) 
     # rob.my_speedl([0, 0, 0.01, 0, 0, 0],0.5,3)
-    rokae.cp_stop()
+
     Capture_stop = 1
     Note.close()
     print('program closed')

@@ -23,7 +23,7 @@ import sys
 import rospy
 
 
-sys.path.append("/home/yiliao/wyh/laparoscope_ws/src/optimal/scripts")
+sys.path.append(f"{os.path.dirname(__file__)}")
 from lap_set_pk import lap_set
 
 
@@ -71,8 +71,8 @@ class Camera_Thread(threading.Thread):
         self.cap = cv.VideoCapture(0)
         self.cap.set(cv.CAP_PROP_FOURCC, cv.VideoWriter_fourcc('N', 'V', '1', '2'))
         self.cap.set(cv.CAP_PROP_FPS, 30)
-        self.cap.set(4, 1080)  # 图片宽度
-        self.cap.set(3, 1920)  # 图片宽度
+        self.cap.set(4, lap_set.video_height)  # 图片宽度
+        self.cap.set(3, lap_set.video_width)  # 图片宽度
 
     def run(self):
         global Capturing,Capture_stop,step_i
