@@ -239,7 +239,7 @@ if __name__ == "__main__":
                     velocity_angular = np.array([0.0, 0.0, 0.0])
                 else:   
                     velocity_angular  += delta_velocity_angular
-                # velocity_angular = np.array([0.0, 0.0, 0.0])
+                velocity_angular = np.array([0.0, 0.0, 0.0])
             else:
                 velocity_angular  += delta_velocity_angular
 
