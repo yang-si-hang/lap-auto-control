@@ -19,7 +19,7 @@ video_file_path = '/home/irobotcare/桌面/EX_Data/lap/test/output_video.avi'   
 video_time_stamp_file_path = '/home/irobotcare/桌面/EX_Data/lap/test/video_timestamp.txt'   #视频每一帧对应时间戳保存路径
 
 rgb2bgr = True          #true 则执行顺序翻转
-video_width = 1920
+video_width = 1920   #并未在所有文件中都采用引用，有些文件中还是用数值设置的分辨率
 video_height = 1080
 video_fps = 30.0
 

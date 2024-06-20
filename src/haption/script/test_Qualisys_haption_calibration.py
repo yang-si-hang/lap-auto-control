@@ -38,7 +38,7 @@ rigid_calibrate = 'calibrate'
 
 time_start = None
 
-fold_path = f'{os.path.dirname(__file__)}/../data/Qualisys_Caibrtion/'
+fold_path = f'{os.path.dirname(__file__)}/../data/Qualisys_Calibration/'
 T_0_rob_path = f'{fold_path}T_0_rob.txt'
 T_cam_rigid_path = f'{fold_path}T_cam_rigid.txt'
 T_0_qualisys_path = f'{fold_path}T_0_cam.txt'
