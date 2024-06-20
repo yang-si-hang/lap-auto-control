@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.12)
-project(rokae_ros_wyh)
+project(rokae_ros)
 add_compile_options(-std=c++17)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
@@ -123,8 +123,9 @@ catkin_package(
 include_directories(
 # include
   ${catkin_INCLUDE_DIRS}
-  "~/rokae/rokae_ws_wyh/src/rokae_ros/include/"
+  "/home/irobotcare/wyh/laparoscope_ws/src/rokae_ros/include/"
   "/usr/include/eigen3/"
+  # ${CMAKE_CURRENT_BINARY_DIR}/include/
   
 )
 
@@ -215,39 +216,39 @@ include_directories(
 
 set(XCORE_USE_XMATE_MODEL ON)
 
-link_directories(${catkin_LIB_DIRS} "~/rokae/rokae_ws_wyh/src/rokae_ros/lib/Linux/cpp/x86_64/")
+link_directories(${catkin_LIB_DIRS} "/home/irobotcare/wyh/laparoscope_ws/src/rokae_ros/lib/Linux/cpp/x86_64/")
 add_executable(torque_control example/cpp/rt/torque_control.cpp)
 target_link_libraries(torque_control ${catkin_LIBRARIES} xCoreSDK xMateModel Threads::Threads)
 
-link_directories(${catkin_LIB_DIRS} "~/rokae/rokae_ws_wyh/src/rokae_ros/lib/Linux/cpp/x86_64/")
+link_directories(${catkin_LIB_DIRS} "/home/irobotcare/wyh/laparoscope_ws/src/rokae_ros/lib/Linux/cpp/x86_64/")
 add_executable(coppeliasim_test example/cpp/rt/coppeliasim_test.cpp)
 target_link_libraries(coppeliasim_test ${catkin_LIBRARIES} xCoreSDK xMateModel Threads::Threads)
 
-link_directories(${catkin_LIB_DIRS} "~/rokae/rokae_ws_wyh/src/rokae_ros/lib/Linux/cpp/x86_64/")
+link_directories(${catkin_LIB_DIRS} "/home/irobotcare/wyh/laparoscope_ws/src/rokae_ros/lib/Linux/cpp/x86_64/")
 add_executable(joint_admittance_control example/cpp/rt/joint_admittance_control.cpp)
 target_link_libraries(joint_admittance_control ${catkin_LIBRARIES} xCoreSDK xMateModel Threads::Threads)
 
-link_directories(${catkin_LIB_DIRS} "~/rokae/rokae_ws_wyh/src/rokae_ros/lib/Linux/cpp/x86_64/")
+link_directories(${catkin_LIB_DIRS} "/home/irobotcare/wyh/laparoscope_ws/src/rokae_ros/lib/Linux/cpp/x86_64/")
 add_executable(joint_position_control example/cpp/rt/joint_position_control.cpp)
 target_link_libraries(joint_position_control ${catkin_LIBRARIES} xCoreSDK xMateModel Threads::Threads)
 
-link_directories(${catkin_LIB_DIRS} "~/rokae/rokae_ws_wyh/src/rokae_ros/lib/Linux/cpp/x86_64/")
+link_directories(${catkin_LIB_DIRS} "/home/irobotcare/wyh/laparoscope_ws/src/rokae_ros/lib/Linux/cpp/x86_64/")
 add_executable(cartesian_s_line example/cpp/rt/cartesian_s_line.cpp)
 target_link_libraries(cartesian_s_line ${catkin_LIBRARIES} xCoreSDK xMateModel Threads::Threads)
 
-link_directories(${catkin_LIB_DIRS} "~/rokae/rokae_ws_wyh/src/rokae_ros/lib/Linux/cpp/x86_64/")
+link_directories(${catkin_LIB_DIRS} "/home/irobotcare/wyh/laparoscope_ws/src/rokae_ros/lib/Linux/cpp/x86_64/")
 add_executable(cartesian_impedance_control example/cpp/rt/cartesian_impedance_control.cpp)
 target_link_libraries(cartesian_impedance_control ${catkin_LIBRARIES} xCoreSDK xMateModel Threads::Threads)
 
-link_directories(${catkin_LIB_DIRS} "~/rokae/rokae_ws_wyh/src/rokae_ros/lib/Linux/cpp/x86_64/")
+link_directories(${catkin_LIB_DIRS} "/home/irobotcare/wyh/laparoscope_ws/src/rokae_ros/lib/Linux/cpp/x86_64/")
 add_executable(joint_impedance_control example/cpp/rt/joint_impedance_control.cpp)
 target_link_libraries(joint_impedance_control ${catkin_LIBRARIES} xCoreSDK xMateModel Threads::Threads)
 
-link_directories(${catkin_LIB_DIRS} "~/rokae/rokae_ws_wyh/src/rokae_ros/lib/Linux/cpp/x86_64/")
+link_directories(${catkin_LIB_DIRS} "/home/irobotcare/wyh/laparoscope_ws/src/rokae_ros/lib/Linux/cpp/x86_64/")
 add_executable(rokae_ros_controller src/rokae_ros_controller.cpp)
 target_link_libraries(rokae_ros_controller ${catkin_LIBRARIES} xCoreSDK xMateModel )
 
-link_directories(${catkin_LIB_DIRS} "~/rokae/rokae_ws_wyh/src/rokae_ros/lib/Linux/cpp/x86_64/")
+link_directories(${catkin_LIB_DIRS} "/home/irobotcare/wyh/laparoscope_ws/src/rokae_ros/lib/Linux/cpp/x86_64/")
 add_executable(sdk_example example/cpp/sdk_example.cpp)
 target_link_libraries(sdk_example ${catkin_LIBRARIES} xCoreSDK xMateModel Threads::Threads)
 

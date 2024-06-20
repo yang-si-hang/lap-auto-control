@@ -6,8 +6,20 @@ import rospy
 sys.path.append(f"{os.path.dirname(__file__)}")
 import rokae_basic_fun 
 
+sys.path.append(f"{os.path.dirname(__file__)}/my_tools")
+import key_signal
+
+
+keyboard_monitor = key_signal.keyboard_monitor_class()
+
+
+        
+
+        
 
 rospy.init_node('rokae_init_pose')
+
+
 
 
 joints = np.array([
@@ -23,7 +35,44 @@ rokae = rokae_basic_fun.rokae()
 
 rokae.set_mode('jp')
 
-rokae.jp_cmd(joints[1])
+
+try:
+    print(f'请选择初始化位姿：\n0: 对准下方rcm\n1: 对准前方rcm\n2: 力传感器校准位姿')
+    while not rospy.is_shutdown():
+        # 检查标准输入是否有可读数据,没有这段好像也不影响ctrl c 中断
+        rlist, _, _ = keyboard_monitor.detect()
+        if rlist:
+            # 读取单个字符并处理
+            input_data = keyboard_monitor.read_char()
+            print(f'已选择位姿{input_data}')
+            if input_data == '0':
+                rokae.jp_cmd(joints[0])
+            elif input_data == '1':
+                rokae.jp_cmd(joints[1])
+            elif input_data == '2':
+                rokae.jp_cmd(joints[2])
+            print(f'已抵达位姿{input_data}\n')
+            print(f'请选择初始化位姿：\n0: 对准下方rcm\n1: 对准前方rcm\n2: 力传感器校准位姿\nctrl+c: 退出')
+
+            # print("You typed:", input_data)
+
+        else:
+            input_data=''
+            # count=0
+
+        
+        
+# 程序中断处理        
+except KeyboardInterrupt:
+    print("Keyboard Interrupt detected!  (except)")
+    rospy.signal_shutdown()
+    
+    
+
+# 恢复终端设置
+finally:
+    keyboard_monitor.monitor_stop()
+
 
 
 

@@ -311,7 +311,7 @@ class rokae:
             rate.sleep()
         time_send_finish = time.time()
         if wait is True:
-            print('wait for jp_cmd...')
+            # print('wait for jp_cmd...')
             delt_j = np.linalg.norm(desire_joints - np.array(self.JointState.position))
 
 
@@ -325,9 +325,9 @@ class rokae:
                 # print(f'jp_now: {self.JointState.position}')
                 # print(f'delta_j: {delt_j} > {threshold}')
                 rate.sleep()
-            print('reached jp_cmd')
+            # print('reached jp_cmd')
         time_reach = time.time()
-        print(f'send time: {(time_reach-time_start)}\nwait time:{(time_reach-time_send_finish)}')
+        # print(f'send time: {(time_reach-time_start)}\nwait time:{(time_reach-time_send_finish)}')
 
 
 
