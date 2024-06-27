@@ -48,6 +48,12 @@ acceleration_linear_path = f'{data_fold}acceleration_linear.txt'
 acceleration_angular_path = f'{data_fold}acceleration_angular.txt'
 velocity_linear_path = f'{data_fold}velocity_linear.txt'
 velocity_angular_path = f'{data_fold}velocity_angular.txt'
+vector_s_rcm_path = f'{data_fold}vector_s_rcm.txt'
+time_calculate_path = f'{data_fold}time_calculate.txt'
+time_pub_path = f'{data_fold}time_pub.txt'
+torque_force_tau_path = f'{data_fold}torque_force_tau.txt'
+torque_damp_linear_tau_path = f'{data_fold}torque_force_tau.txt'
+
 
 force_before_filter_list = []
 force_filtered_list = []
@@ -57,6 +63,11 @@ acceleration_linear_list = []
 acceleration_angular_list = []
 velocity_linear_list = []
 velocity_angular_list = []
+vector_s_rcm_list = []
+time_calculate_list = []
+time_pub_list = []
+torque_force_tau_list = []
+torque_damp_linear_tau_list = []
 
 
 force_threshold = 5
@@ -203,6 +214,7 @@ if __name__ == "__main__":
     time.sleep(0.5)
 
     print(f'======================= start drag ========================')
+    time_start = time.time()
     rate = rospy.Rate(frequency_calculate)
     try:
         count = 0
@@ -216,11 +228,9 @@ if __name__ == "__main__":
             vector_rob_rcm = rcm_position - T_0_rob[:3,3]
             
             F_now = F_sensor.pure_force_now(R_0_sensor)
-            force_before_filter_list.append(np.array(F_now).squeeze())
-            
-
+            force_before_filter_list.append(np.array(F_now).squeeze())  #由于滤波需要，无论是否save_data，此列表都要更新
             F_now_filtered = weighted_moving_average_filter(force_before_filter_list[-filter_length: ], filter_weights, filter_length)
-            force_filtered_list.append(np.array(F_now_filtered).squeeze())
+            
 
 
             force = F_now_filtered[:3]
@@ -251,7 +261,7 @@ if __name__ == "__main__":
             force_damp_tau = force_damp_linear - force_damp_n
             torque_damp_angular = T_0_rob[:3,:3] @ (- damping_angular_matrix @ ( T_0_rob[:3,:3].T @ velocity_angular ))
             # torque_damp_angular = -damping_angular * velocity_angular
-            torque_damp_linear_tau = np.cross(-vector_s_rcm, force_damp_tau)
+            torque_damp_linear_tau = np.cross(-vector_s_rcm, force_damp_tau)  #阻尼力切向分量产生的力矩
 
 
             
@@ -344,6 +354,16 @@ if __name__ == "__main__":
             # pub_rcm_error.publish(msg_rcm_error)
 
 
+            #此处每个计算循环存储一次 
+            if __save_data:
+                time_calculate_list.append(time.time()-time_start)
+                force_filtered_list.append(np.array(F_now_filtered).squeeze())
+                vector_s_rcm_list.append(vector_s_rcm.copy())
+                torque_force_tau_list.append(torque_force_tau.copy())
+                torque_damp_linear_tau_list.append(torque_damp_linear_tau.copy())
+
+
+
             count += 1
 
             if count >= pub_count:
@@ -354,8 +374,9 @@ if __name__ == "__main__":
                 rokae.cv_cmd((velocity_linear + rcm_error_velocity).tolist()+velocity_angular.tolist() )
                 print(  f'速度1:\t{velocity_linear} \t{velocity_angular} ')
 
-
+                #此处每个发布循环存储一次
                 if __save_data:
+                    time_pub_list.append(time.time()-time_start)
                     pose_list.append(np.concatenate((rokae.pose.position.array(),rokae.pose.orientation.array())).squeeze())
                     rcm_error_list.append(np.linalg.norm(rcm_error))
                     # acceleration_linear_list.append()
@@ -380,9 +401,17 @@ if __name__ == "__main__":
         rokae.stop()
 
         if __save_data:
-            np.savetxt(pose_path, np.array(pose_list), delimiter=',')
+            # 计算循环中的数据
+            np.savetxt(time_calculate_path, np.array(time_calculate_list), delimiter=',')
             np.savetxt(force_before_filter_path, np.array(force_before_filter_list), delimiter=',')
             np.savetxt(force_filtered_path, np.array(force_filtered_list), delimiter=',')
+            np.savetxt(vector_s_rcm_path, np.array(vector_s_rcm_list), delimiter=',')
+            np.savetxt(torque_force_tau_path, np.array(torque_force_tau_list), delimiter=',')
+            np.savetxt(torque_damp_linear_tau_path, np.array(torque_damp_linear_tau_list), delimiter=',')
+
+            # 发布循环中的数据
+            np.savetxt(time_pub_path, np.array(time_pub_list), delimiter=',')
+            np.savetxt(pose_path, np.array(pose_list), delimiter=',')
             np.savetxt(rcm_error_path, np.array(rcm_error_list), delimiter=',')
             np.savetxt(velocity_angular_path, np.array(velocity_angular_list), delimiter=',')
             np.savetxt(velocity_linear_path, np.array(velocity_linear_list), delimiter=',')
