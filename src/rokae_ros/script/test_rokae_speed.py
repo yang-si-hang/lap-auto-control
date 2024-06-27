@@ -63,6 +63,10 @@ def speed_random(pub):
     time_step = 1.0/frequency
     continue_time = 2
     num_step = 3
+    v_linear_min = 0.03
+    v_linear_max = 0.05
+    v_angular_min = 0.08
+    v_angular_max = 0.12
 
     speed_stop(pub)
 
@@ -72,12 +76,12 @@ def speed_random(pub):
         # v_linear = v_linear.squeeze()
         v_linear_norm = np.linalg.norm(v_linear)
         v_linear_normalized = v_linear / v_linear_norm
-        v_linear = v_linear_normalized * random.uniform(0.01 , 0.05) * random.choice([-1,1])
+        v_linear = v_linear_normalized * random.uniform(v_linear_min , v_linear_max) * random.choice([-1,1])
 
         v_angular = np.random.rand(3)
         v_angular_norm = np.linalg.norm(v_angular)
         v_angular_normalized = v_angular / v_angular_norm
-        v_angular = v_angular_normalized * random.uniform(0.05 , 0.1) * random.choice([-1,1])
+        v_angular = v_angular_normalized * random.uniform(v_angular_min , v_angular_max) * random.choice([-1,1])
         # v_angular = v_angular.squeeze()
 
         rate = rospy.Rate(frequency)
@@ -274,12 +278,9 @@ if __name__ == "__main__":
     time.sleep(0.5)
 
     # move_circle(pose_pub)
-
     # speed_circle(speed_pub)
-
-    speed_line(speed_pub)
-
-    # speed_random(speed_pub)
+    # speed_line(speed_pub)
+    speed_random(speed_pub)
     # speed_cirle_time(speed_pub)
 
     print(f'stopping')

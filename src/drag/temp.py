@@ -74,3 +74,23 @@ r2 = q2r([w,x,y,z])
 print(f'r1:\n{r1.as_matrix()}')
 print(f'r2:\n{np.array(r2) - np.array([[-0.974284 , 0.061799 ,-0.216683], [ 0.10485  , 0.975538 ,-0.193217], [ 0.199442 ,-0.210968 ,-0.95693  ]])}')
 print(f'{r1.as_quat()}')
+
+def filter_weight_generate( length, sigma, miu=0):
+    '''
+    用于生成加权均值滤波的权重
+    权重符合高斯分布，权重总和为1，最后一个权重最大
+    args:
+        length: 权重总个数，即滤波长度
+        sigma: >0, 高斯分布的标准差，越大则权重越平均
+        miu: <= 0, 高斯分布的均值<=0 则保证最后的权重最大，即最新的测量值占比最高
+    return:
+        _weights: np.array， 向量。
+    '''
+    _weights = np.zeros([1,length]).squeeze()
+    for i in range(length):
+        _weights[-1-i] = math.exp(-pow((float(i)-miu),2)/2.0/pow(sigma,2))
+    _weights = _weights /np.sum(_weights)
+    print(f'filter_weight: {_weights}')
+    return _weights
+    
+filter_weight_generate(20, 10, 0)

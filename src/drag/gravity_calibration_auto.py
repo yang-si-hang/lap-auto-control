@@ -45,7 +45,7 @@ T_rob_sensor = lap_set.T_rob_sensor
 R_rob_sensor = T_rob_sensor[:3,:3]
 
 
-
+choice = 0
 
 
 
@@ -176,28 +176,43 @@ if __name__ == '__main__':
 
     rospy.init_node('calibration', anonymous=True)
     rokae = rokae_basic_fun.rokae()
-    F_sensor = force_sensor_receiver.force_sensor_receiver_class()
+    rokae.set_mode('jp')
 
+    F_sensor = force_sensor_receiver.force_sensor_receiver_class()
 
 
     F_file = f'{os.path.dirname(__file__)}/calibration_data/F.txt'
     pose_file = f'{os.path.dirname(__file__)}/calibration_data/pose.txt'
     G_L_F0_file = f'{os.path.dirname(__file__)}/calibration_data/G_L_F0.txt'
 
-    # 运动采点，并保存数据
-    move_and_save_data(20, F_file, pose_file, rokae, F_sensor)
-    #根据数据点文件来进行计算
-    G, L, F0 = gravity_compensation(F_file, pose_file, G_L_F0_file)
-    print(f'G:\n{G}')
-    print(f'L:\n{L}')
-    print(f'F0:\n{F0}')
-
-    F_sensor.set_gravity_args(G, L, F0)
+    
     
 
     try:
-        
+        print(f'请输入：\n1.运动并标定\n2.仅显示结果')
         while not rospy.is_shutdown():
+            while choice == 0:
+                rlist, _, _ = keyboard_monitor.detect()
+                if rlist:
+                    input_data = keyboard_monitor.read_char()
+                    if input_data == '1':
+                        choice = 1
+                        rokae.jp_cmd(np.array([0,     34.276,     0,      48.969,     5.435,      48.827,     81.927])* (np.pi/180)) #
+                        # 运动采点，并保存数据
+                        move_and_save_data(20, F_file, pose_file, rokae, F_sensor)
+                        #根据数据点文件来进行计算
+                        G, L, F0 = gravity_compensation(F_file, pose_file, G_L_F0_file)
+                        print(f'G:\n{G}')
+                        print(f'L:\n{L}')
+                        print(f'F0:\n{F0}')
+
+                        F_sensor.set_gravity_args(G, L, F0)
+                        break
+                    
+                    if input_data == '2':
+                        choice = 2
+                        break
+
             T_0_rob = rokae.pose.T_matrix()
             # print(rokae.pose,"\n",T_0_rob)
             T_0_sensor = T_0_rob @ T_rob_sensor

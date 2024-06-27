@@ -67,6 +67,7 @@ private:
     ros::Publisher js_pub_; // 关节状态发布
     ros::Publisher cp_pub_; // 笛卡尔位置发布
     ros::Publisher cv_pub_; // 笛卡尔速度发布
+    ros::Publisher ca_pub_; // 笛卡尔加速度发布
     ros::Publisher cf_pub_; // 笛卡尔力发布
 
     ros::Subscriber jp_sub_; // 关节位置接收
@@ -119,6 +120,7 @@ ROKAE_ROS::ROKAE_ROS(const std::string &m_ip, const std::string &local_ip)
     js_pub_ = nh.advertise<sensor_msgs::JointState>("rokae/state/JointState", 1);
     cp_pub_ = nh.advertise<geometry_msgs::PoseStamped>("rokae/state/CartesianPose", 1);
     cv_pub_ = nh.advertise<geometry_msgs::TwistStamped>("rokae/state/Twist", 1);
+    ca_pub_ = nh.advertise<geometry_msgs::TwistStamped>("rokae/state/acc", 1);
     cf_pub_ = nh.advertise<geometry_msgs::WrenchStamped>("rokae/state/Wrench", 1);
 
     // 创建订阅者
@@ -177,6 +179,7 @@ void ROKAE_ROS::send_state()
     sensor_msgs::JointState js_msg;
     geometry_msgs::PoseStamped tp_msg;
     geometry_msgs::TwistStamped tv_msg;
+    geometry_msgs::TwistStamped tcpAcc_msg;
 
     rtCon_->updateRobotState();
 
@@ -215,6 +218,17 @@ void ROKAE_ROS::send_state()
     tv_msg.twist.angular.y=tcpVel[4] * angular_rate;
     tv_msg.twist.angular.z=tcpVel[5] * angular_rate;
     cv_pub_.publish(tv_msg);
+
+    //发送末端加速度
+    float angular_acc_rate = 1000;
+    tcpAcc_msg.header.stamp=ros::Time().now();
+    tcpAcc_msg.twist.linear.x=tcpAcc[0];
+    tcpAcc_msg.twist.linear.y=tcpAcc[1];
+    tcpAcc_msg.twist.linear.z=tcpAcc[2];
+    tcpAcc_msg.twist.angular.x=tcpAcc[3] * angular_acc_rate;
+    tcpAcc_msg.twist.angular.y=tcpAcc[4] * angular_acc_rate;
+    tcpAcc_msg.twist.angular.z=tcpAcc[5] * angular_acc_rate;
+    ca_pub_.publish(tcpAcc_msg);
 
 
     // 发布末端位置和姿态

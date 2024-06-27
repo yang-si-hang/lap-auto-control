@@ -27,7 +27,6 @@ joints = np.array([
     [0,     67.568,     0,      75.524,     5.436,      -52.270,    81.927],    #对准前rcm
     [0,     34.276,     0,      48.969,     5.435,      48.827,     81.927]     #力传感器校准位姿
 ])
-
 joints = joints * (np.pi/180)
 
 
@@ -60,15 +59,11 @@ try:
             input_data=''
             # count=0
 
-        
-        
 # 程序中断处理        
 except KeyboardInterrupt:
     print("Keyboard Interrupt detected!  (except)")
     rospy.signal_shutdown()
     
-    
-
 # 恢复终端设置
 finally:
     keyboard_monitor.monitor_stop()

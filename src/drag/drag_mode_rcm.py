@@ -40,7 +40,8 @@ import rokae_basic_fun
 __save_data = True
 
 data_fold = f"{os.path.dirname(__file__)}/data/"
-force_path = f'{data_fold}force.txt'
+force_before_filter_path = f'{data_fold}force_before_filter.txt'
+force_filtered_path = f'{data_fold}force_filtered.txt'
 pose_path = f'{data_fold}pose.txt'
 rcm_error_path = f'{data_fold}rcm_error.txt'
 acceleration_linear_path = f'{data_fold}acceleration_linear.txt'
@@ -48,7 +49,8 @@ acceleration_angular_path = f'{data_fold}acceleration_angular.txt'
 velocity_linear_path = f'{data_fold}velocity_linear.txt'
 velocity_angular_path = f'{data_fold}velocity_angular.txt'
 
-force_list = []
+force_before_filter_list = []
+force_filtered_list = []
 pose_list = []
 rcm_error_list = []
 acceleration_linear_list = []
@@ -67,7 +69,7 @@ mass = 0.5
 # I_rotation = 0.6
 I_rotation_x = 0.6
 I_rotation_y = 0.6
-I_rotation_z = 0.05
+I_rotation_z = 0.03
 I_matrix = np.zeros((3,3))
 I_matrix[0,0] = I_rotation_x
 I_matrix[1,1] = I_rotation_y
@@ -116,6 +118,11 @@ rcm_position = T_0_rcm[:3,3].squeeze()
 T_rob_sensor = lap_set.T_rob_sensor
 R_rob_sensor = T_rob_sensor[:3,:3]
 
+tmp = 0
+
+
+
+
 def point_to_rcm(__rokae):
     T_0_rob = __rokae.pose.T_matrix()
     z_now = T_0_rob[:3,2]
@@ -140,6 +147,44 @@ def point_to_rcm(__rokae):
     rokae.cp_cmd(T_desir)
   
 
+def filter_weight_generate(length=20, sigma=10, miu=0):
+    '''
+    用于生成加权均值滤波的权重
+    权重符合高斯分布，权重总和为1，最后一个权重最大
+    args:
+        length: 权重总个数，即滤波长度
+        sigma: >0, 高斯分布的标准差，越大则权重越平均
+        miu: <= 0, 高斯分布的均值<=0 则保证最后的权重最大，即最新的测量值占比最高
+    return:
+        _weights: np.array， 向量。
+    '''
+    _weights = np.zeros([1,length]).squeeze()
+    for i in range(length):
+        _weights[-1-i] = math.exp(-pow((float(i)-miu),2)/2.0/pow(sigma,2))
+    _weights = _weights /np.sum(_weights)
+    # print(f'filter_weight: {_weights}')
+    return _weights
+
+
+def weighted_moving_average_filter(_before_data, _weights, _stemp_num):
+    '''
+    加权均值滤波,计算量很小，40步6维力信息滤波耗时约 3e-5 s
+    args:
+        _before_data(list): _stemp_num * _data_length 每个元素为 _data_length 维力信息
+
+    '''
+    _data_length = len(_before_data[0])
+    _filtered_data  = _weights.reshape([1, _stemp_num]) @ np.array(_before_data).reshape([_stemp_num, _data_length])
+    return _filtered_data.squeeze()
+
+
+
+filter_length = 40 #实时滤波采用的原始数据列表长度
+filter_weights = filter_weight_generate(filter_length, 20, 0)
+for i in range(filter_length):
+    force_before_filter_list.append([0,0,0, 0,0,0])
+    force_filtered_list.append([0,0,0, 0,0,0])
+
 
 
 if __name__ == "__main__":
@@ -147,8 +192,9 @@ if __name__ == "__main__":
     rospy.init_node('drag_mode', anonymous=True)
     rokae = rokae_basic_fun.rokae()
     F_sensor = force_sensor_receiver.force_sensor_receiver_class()
+    pub_velocity_cmd = rospy.Publisher('v_',TwistStamped,queue_size=1)
     pub_Twist = rospy.Publisher('TwistStamped_test',TwistStamped,queue_size=1)
-    pub_rcm_error = rospy.Publisher('rcm_error',Point,queue_size=1)
+    # pub_rcm_error = rospy.Publisher('rcm_error',Point,queue_size=1)
     msg_TwistStamped = TwistStamped()
     point_to_rcm(rokae)
     rokae.cp_stop()
@@ -170,8 +216,16 @@ if __name__ == "__main__":
             vector_rob_rcm = rcm_position - T_0_rob[:3,3]
             
             F_now = F_sensor.pure_force_now(R_0_sensor)
-            force = F_now[:3]
-            torque = F_now[3:]
+            force_before_filter_list.append(np.array(F_now).squeeze())
+            
+
+            F_now_filtered = weighted_moving_average_filter(force_before_filter_list[-filter_length: ], filter_weights, filter_length)
+            force_filtered_list.append(np.array(F_now_filtered).squeeze())
+
+
+            force = F_now_filtered[:3]
+            torque = F_now_filtered[3:]
+            
             # print(f'测量力:{np.linalg.norm(force)}\t测量力矩:{torque}')
             if np.linalg.norm(force) < force_threshold:
                 force = np.array([0.0, 0.0, 0.0])
@@ -271,10 +325,7 @@ if __name__ == "__main__":
                 rcm_error_velocity = np.array([0,0,0])
 
             
-            print(f'rcm_error: {rcm_error} ({np.linalg.norm(rcm_error)}) \tvelocity: {rcm_error_velocity}')
-
-
-
+            # print(f'rcm_error: {rcm_error} ({np.linalg.norm(rcm_error)}) \tvelocity: {rcm_error_velocity}')
             # print(  f'加速度:\t{acceleration_linear} \t{acceleration_angular} ')
             # print(  f'速度:\t{velocity_linear} \t{velocity_angular} ')
 
@@ -294,22 +345,27 @@ if __name__ == "__main__":
 
 
             count += 1
+
             if count >= pub_count:
                 count = 0
                 # rob.my_speedl(velocity_linear.tolist()+[0, 0, 0],0.5,0.2)
                 # rob.my_speedl([0,0,0]+velocity_angular.tolist(),0.5,0.2)
                 # rob.my_speedl(velocity_linear.tolist()+velocity_angular.tolist(),0.5,0.2)
                 rokae.cv_cmd((velocity_linear + rcm_error_velocity).tolist()+velocity_angular.tolist() )
+                print(  f'速度1:\t{velocity_linear} \t{velocity_angular} ')
+
 
                 if __save_data:
                     pose_list.append(np.concatenate((rokae.pose.position.array(),rokae.pose.orientation.array())).squeeze())
-                    force_list.append(np.array(F_now).squeeze())
                     rcm_error_list.append(np.linalg.norm(rcm_error))
                     # acceleration_linear_list.append()
                     # acceleration_angular_list = []
-                    velocity_linear_list.append(velocity_linear.squeeze())
-                    velocity_angular_list.append(velocity_angular.squeeze())
-                    
+                    velocity_linear_list.append(velocity_linear.squeeze().copy())
+                    velocity_angular_list.append(velocity_angular.copy())
+                    # print(  f'速度3:\t{velocity_linear} \t{velocity_angular} ')
+
+                    # print(len(velocity_angular_list), velocity_angular_list[-5:])
+            
 
             rate.sleep()
 
@@ -325,7 +381,8 @@ if __name__ == "__main__":
 
         if __save_data:
             np.savetxt(pose_path, np.array(pose_list), delimiter=',')
-            np.savetxt(force_path, np.array(force_list), delimiter=',')
+            np.savetxt(force_before_filter_path, np.array(force_before_filter_list), delimiter=',')
+            np.savetxt(force_filtered_path, np.array(force_filtered_list), delimiter=',')
             np.savetxt(rcm_error_path, np.array(rcm_error_list), delimiter=',')
             np.savetxt(velocity_angular_path, np.array(velocity_angular_list), delimiter=',')
             np.savetxt(velocity_linear_path, np.array(velocity_linear_list), delimiter=',')
