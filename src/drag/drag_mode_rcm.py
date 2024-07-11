@@ -371,7 +371,7 @@ if __name__ == "__main__":
                 # rob.my_speedl(velocity_linear.tolist()+[0, 0, 0],0.5,0.2)
                 # rob.my_speedl([0,0,0]+velocity_angular.tolist(),0.5,0.2)
                 # rob.my_speedl(velocity_linear.tolist()+velocity_angular.tolist(),0.5,0.2)
-                rokae.cv_cmd((velocity_linear + rcm_error_velocity).tolist()+velocity_angular.tolist() )
+                # rokae.cv_cmd((velocity_linear + rcm_error_velocity).tolist()+velocity_angular.tolist() )
                 print(  f'速度1:\t{velocity_linear} \t{velocity_angular} ')
 
                 #此处每个发布循环存储一次

@@ -27,7 +27,7 @@ import signal
 import sys
 
 import select
-import tty
+import tty 
 import termios
 
 class keyboard_monitor_class(object):
