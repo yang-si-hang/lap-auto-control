@@ -1,6 +1,7 @@
 '''
 注意：
     1、正确设置 lap_set.T_rob_sensor
+    2、建议运行 rokae_init_pose 
 '''
 
 import os.path
@@ -9,20 +10,18 @@ import math
 import numpy as np
 import rospy
 from rospy.numpy_msg import numpy_msg
-from rospy_tutorials.msg import Floats
-from std_msgs.msg import Int8
 import time
-import logging
+
 import sys
 from spatialmath.base import trotx, troty, trotz, transl, angvec2tr, rpy2tr
 from math3d.transform import Transform as Trans
-from scipy.spatial.transform import Rotation
-import math3d as m3d
+
 import random
 
-from geometry_msgs.msg import PoseStamped, TwistStamped
-from scipy.spatial.transform import Rotation 
+
 from spatialmath.base import *
+from geometry_msgs.msg import WrenchStamped
+from std_msgs.msg import Header
 
 
 
@@ -211,6 +210,8 @@ if __name__ == '__main__':
                     
                     if input_data == '2':
                         choice = 2
+                        F_now_pub = rospy.Publisher('gravity_calibrated_force',WrenchStamped, queue_size=1)
+                        wrench_stamped_msg = WrenchStamped()
                         break
 
             T_0_rob = rokae.pose.T_matrix()
@@ -226,6 +227,17 @@ if __name__ == '__main__':
                     f'传感器数值: {F_now}\n'\
                     f'外力: {F_now}\n'\
                     f'force: {np.linalg.norm(F_now[:3])}\ntorque: {np.linalg.norm(F_now[3:])}')
+            if choice == 2:
+                wrench_stamped_msg.header = Header(stamp=rospy.Time.now())
+                wrench_stamped_msg.wrench.force.x = F_now[0]
+                wrench_stamped_msg.wrench.force.y = F_now[1]
+                wrench_stamped_msg.wrench.force.z = F_now[2]
+
+                wrench_stamped_msg.wrench.torque.x = F_now[3]
+                wrench_stamped_msg.wrench.torque.y = F_now[4]
+                wrench_stamped_msg.wrench.torque.z = F_now[5]
+
+                F_now_pub.publish(wrench_stamped_msg)
 
      # 程序中断处理        
     except KeyboardInterrupt:

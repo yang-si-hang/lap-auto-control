@@ -94,3 +94,20 @@ def filter_weight_generate( length, sigma, miu=0):
     return _weights
     
 filter_weight_generate(20, 10, 0)
+
+
+matrix = np.array([[11,12,13,14,],[21,22,23,24],[31,31,33,34],[41,42,43,44]])
+list = []
+list.append(matrix[:3,0].copy())
+list.append(matrix[:3,1].copy())
+print(list[0])
+print(list[1])
+
+def max_norm(matrix, axis = 1):
+    # 计算每行向量的模长
+    row_norms = np.linalg.norm(matrix, axis=0)
+    # 找到模长的最大值
+    max_norm = np.max(row_norms)
+    return row_norms
+
+print(max_norm(matrix,1))

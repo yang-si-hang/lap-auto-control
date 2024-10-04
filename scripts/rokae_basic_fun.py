@@ -6,6 +6,7 @@ import rospy
 import math
 import time
 from spatialmath.base import *
+from std_msgs.msg import String
 #  关节角发布(位置和速度)
     # js_pub_ = nh.advertise<sensor_msgs::JointState>("rokae/state/JointState", 1);
     # cp_pub_ = nh.advertise<geometry_msgs::PoseStamped>("rokae/state/CartesianPose", 1);
@@ -30,6 +31,7 @@ class rokae:
         self.__pub_cp = rospy.Publisher('/rokae/command/CartesianPose',PoseStamped,queue_size=1)
         self.__pub_cv = rospy.Publisher('/rokae/command/Twist',TwistStamped,queue_size=1)
         self.__pub_jp = rospy.Publisher('rokae/command/JointPosition',JointState,queue_size=1)
+        self.__pub_grag = rospy.Publisher('rokae/command/drag',String,queue_size=1)
 
         rospy.Subscriber('rokae/state/JointState', JointState, self.JointState_callback)
         rospy.Subscriber('rokae/state/CartesianPose', PoseStamped, self.CarteisianPose_callback)
@@ -339,7 +341,18 @@ class rokae:
                 'cp':笛卡尔位姿
                 'cv':笛卡尔速度
                 'jp':关节位置
+                'drag':拖动模式（珞石自带）
+                'drag_stop':终止拖动（珞石自带）
         '''
+        if self.__Mode == mode:
+            print(f'keep mode: {mode}')
+            return
+        if self.__Mode == 'drag' and mode != 'drag':
+            self.__pub_grag.publish('drag_stop')
+            time.sleep(3)
+            print('rokae_basic_fun: drag stop')
+
+        self.stop(0.5)
         print(f'mode changing {self.__Mode} -> {mode} ......')
         if mode == 'cp':
             self.cp_stop()
@@ -350,16 +363,24 @@ class rokae:
         elif mode == 'jp':
             self.jp_stop()
             self.__Mode = 'jp'
+        elif mode == 'drag':
+            self.__pub_grag.publish('drag_start')
+            self.__Mode = 'drag'
         print(f'mode changed to {mode}')
 
-    def stop(self):
+    def stop(self,_time = 1.0):
         
         if self.__Mode == 'cp':
-            self.cp_stop()
+            self.cp_stop(_time)
         elif self.__Mode == 'cv':
-            self.cv_stop()
+            self.cv_stop(_time)
         elif self.__Mode == 'jp':
-            self.jp_stop()
+            self.jp_stop(_time)
+        elif self.__Mode == 'drag':
+            pass
+
+    def mode(self):
+        return self.__Mode
             
         
 

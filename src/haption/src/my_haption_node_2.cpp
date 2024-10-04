@@ -32,8 +32,8 @@ int main(int argc, char **argv)
     float fWrench[6];
 
     VirtContext VC;
-    // std::string ip_address = "192.168.100.10#53210"; // 这个地方的端口号：当机械臂是120型号时为5000，是166型号和190型号时改为53210
-    std::string ip_address = "192.168.100.10#5000"; // 这个地方的端口号：当机械臂是120型号时为5000，是166型号和190型号时改为53210
+    std::string ip_address = "192.168.100.10#53210"; // 这个地方的端口号：当机械臂是120型号时为5000，是166型号和190型号时改为53210
+    // std::string ip_address = "192.168.100.10#5000"; // 这个地方的端口号：当机械臂是120型号时为5000，是166型号和190型号时改为53210
     VC = virtOpen(ip_address.c_str());
     if (VC == nullptr)
     {
@@ -76,14 +76,14 @@ int main(int argc, char **argv)
         // std::cout << "speed: " << speed[0] << " " << speed[1] << " " << speed[2] << std::endl;
 
         virtGetButton(VC, 1, button_red);
-
+        // std::cout<<button_red[0]<<"\t"<<button_red[1]<<"\t"<<button_red[2]<<std::endl;
         button_flag_saved = button_flag;
 
-        if (button_red[0] && !button_flag)
+        if (button_red[0] || button_red[1] && !button_flag)
         {
             button_flag = true;
         }
-        else if (!button_red[0] && button_flag)
+        else if (!button_red[0] && !button_red[1] && button_flag)
         {
             button_flag = false;
         }
@@ -105,7 +105,7 @@ int main(int argc, char **argv)
             virtSetCommandType(VC, COMMAND_TYPE_IMPEDANCE);
             virtSetIndexingMode(VC, INDEXING_ALL_FORCE_FEEDBACK_INHIBITION);
             virtSetPowerOn(VC, 1);
-            std::cout << "switch1" << std::endl;
+            std::cout << "button down" << std::endl;
         }
         else if (!button_flag && is_changed)
         {
@@ -116,7 +116,7 @@ int main(int argc, char **argv)
             virtVmSetDefaultToCartesianPosition(VC); // 锁住所有关节
             virtVmSetBaseFrameToCurrentFrame(VC);
 
-            std::cout << "switch2" << std::endl;
+            std::cout << "button up" << std::endl;
         }
 
         // 发布所有状态

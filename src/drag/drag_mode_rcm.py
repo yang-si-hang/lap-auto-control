@@ -78,9 +78,9 @@ friction_angular = 0.05
 
 mass = 0.5
 # I_rotation = 0.6
-I_rotation_x = 0.6
-I_rotation_y = 0.6
-I_rotation_z = 0.03
+I_rotation_x = 1.2
+I_rotation_y = 1.2
+I_rotation_z = 0.45
 I_matrix = np.zeros((3,3))
 I_matrix[0,0] = I_rotation_x
 I_matrix[1,1] = I_rotation_y
@@ -93,7 +93,7 @@ velocity_linear_norm = 0
 velocity_angular_norm = 0
 # velocity_linear_rate = 2
 # velocity_angular_rate = 1
-velocity_linear_limit = 0.1
+velocity_linear_limit = 0.05
 velocity_angular_limit = 10/180*math.pi
 
 
@@ -102,8 +102,8 @@ damping_linear = 200
 damping_linear_z = 100
 # damping_angular = 0.2
 damping_angular_matrix = np.zeros((3,3))
-damping_angular_matrix[0,0] = 0.2
-damping_angular_matrix[1,1] = 0.2
+damping_angular_matrix[0,0] = 0.4
+damping_angular_matrix[1,1] = 0.4
 damping_angular_matrix[2,2] = 0.2
 
 rcm_error_velocity = np.array([0.0, 0.0, 0.0])
@@ -129,12 +129,29 @@ rcm_position = T_0_rcm[:3,3].squeeze()
 T_rob_sensor = lap_set.T_rob_sensor
 R_rob_sensor = T_rob_sensor[:3,:3]
 
-tmp = 0
+# 各方向上的力分量上限，一旦超过上限，停止运动，以保护力传感器
+sensor_safe_force = 300   
+sensor_safe_torque = 7.5
 
-
-
+def max_norm(__matrix, __axis = 1):
+    '''
+    求解矩阵中向量的最大模长
+    args:
+        __matrix:矩阵
+        __axis: 0列向量 1行向量
+    return: 
+        float 最大模长值  
+    '''
+    # 计算每行向量的模长
+    row_norms = np.linalg.norm(__matrix, axis=__axis)
+    # 找到模长的最大值
+    max_norm = np.max(row_norms)
+    return max_norm
 
 def point_to_rcm(__rokae):
+    '''
+    控制机械臂末端保持原位置，同时指向RCM点
+    '''
     T_0_rob = __rokae.pose.T_matrix()
     z_now = T_0_rob[:3,2]
     z_desire = rcm_position - T_0_rob[:3,3]
@@ -203,7 +220,7 @@ if __name__ == "__main__":
     rospy.init_node('drag_mode', anonymous=True)
     rokae = rokae_basic_fun.rokae()
     F_sensor = force_sensor_receiver.force_sensor_receiver_class()
-    pub_velocity_cmd = rospy.Publisher('v_',TwistStamped,queue_size=1)
+    pub_velocity_cmd = rospy.Publisher('drag_velocity_cmd',TwistStamped,queue_size=1)
     pub_Twist = rospy.Publisher('TwistStamped_test',TwistStamped,queue_size=1)
     # pub_rcm_error = rospy.Publisher('rcm_error',Point,queue_size=1)
     msg_TwistStamped = TwistStamped()
@@ -221,11 +238,15 @@ if __name__ == "__main__":
         while not rospy.is_shutdown():
             # print('==========================')
             T_0_rob = rokae.pose.T_matrix()
+            R_0_rob = T_0_rob[:3,:3]
+            R_rob_0 = R_0_rob.T
+
             T_0_sensor = T_0_rob @ T_rob_sensor
             R_0_sensor = T_0_sensor[:3,:3]
             vector_s_rcm = rcm_position - T_0_sensor[:3,3]
             vector_s_rcm_normalized = vector_s_rcm / np.linalg.norm(vector_s_rcm)
             vector_rob_rcm = rcm_position - T_0_rob[:3,3]
+            
             
             F_now = F_sensor.pure_force_now(R_0_sensor)
             force_before_filter_list.append(np.array(F_now).squeeze())  #由于滤波需要，无论是否save_data，此列表都要更新
@@ -235,6 +256,23 @@ if __name__ == "__main__":
 
             force = F_now_filtered[:3]
             torque = F_now_filtered[3:]
+
+            # 检验是否超过传感器安全范围
+            if abs(force[0])>sensor_safe_force or abs(force[1])>sensor_safe_force or abs(force[2])>sensor_safe_force or abs(torque[0])>sensor_safe_torque or abs(torque[1])>sensor_safe_torque or abs(torque[2])>sensor_safe_torque:
+                rokae.stop()
+                print(f'====================\nSensor overload!!!!!\nF_now: {F_now_filtered}\nvelocity:{velocity_linear},{velocity_angular}')
+                if __save_data:
+                    time_calculate_list.append(time.time()-time_start)
+                    force_filtered_list.append(np.array(F_now_filtered).squeeze())
+                    vector_s_rcm_list.append(np.array([0,0,0]))
+                    torque_force_tau_list.append(np.array([0,0,0]))
+                    torque_damp_linear_tau_list.append(np.array([0,0,0]))
+                velocity_linear = np.array([0,0,0])
+                velocity_angular = np.array([0,0,0])
+                acceleration_linear = np.array([0,0,0])
+                acceleration_linear = np.array([0,0,0])
+                continue
+
             
             # print(f'测量力:{np.linalg.norm(force)}\t测量力矩:{torque}')
             if np.linalg.norm(force) < force_threshold:
@@ -250,16 +288,16 @@ if __name__ == "__main__":
             # print(f'切向力法向残余：{np.dot(force_tau,vector_s_rcm_normalized)}')
             # print(f'力：{force} \t力矩:{torque} = {torque-torque_force_tau} + {torque_force_tau}')
 
-            # 阻尼力，以及阻尼力产生的力矩
-            velocity_linear_rob = T_0_rob[:3,:3].T @ velocity_linear
+            # 阻尼力，以及阻尼力产生的力矩 （在末端坐标系下计算，因为阻尼系数是在末端坐标系，即和腹腔镜绑定）
+            velocity_linear_rob = R_rob_0 @ velocity_linear
             force_damp_linear_rob = - np.array([[damping_linear,0,0],[0,damping_linear,0],[0,0,damping_linear_z]]) @ velocity_linear_rob
-            force_damp_linear = T_0_rob[:3,:3] @ force_damp_linear_rob
+            force_damp_linear = R_0_rob @ force_damp_linear_rob
 
 
             # force_damp_linear =  - damping_linear * velocity_linear
             force_damp_n = np.dot(force_damp_linear, vector_s_rcm_normalized) * vector_s_rcm_normalized
             force_damp_tau = force_damp_linear - force_damp_n
-            torque_damp_angular = T_0_rob[:3,:3] @ (- damping_angular_matrix @ ( T_0_rob[:3,:3].T @ velocity_angular ))
+            torque_damp_angular = R_0_rob @ (- damping_angular_matrix @ ( R_rob_0 @ velocity_angular ))
             # torque_damp_angular = -damping_angular * velocity_angular
             torque_damp_linear_tau = np.cross(-vector_s_rcm, force_damp_tau)  #阻尼力切向分量产生的力矩
 
@@ -280,10 +318,10 @@ if __name__ == "__main__":
                     acceleration_angular == np.array([0.0, 0.0, 0.0])
                 else:
                     # acceleration_angular= (torque - friction_angular * torque/np.linalg.norm(torque) )/I_rotation
-                    acceleration_angular= (I_matrix_inv @ (torque - friction_angular * torque/np.linalg.norm(torque) )).squeeze()
+                    acceleration_angular= (R_0_rob @ I_matrix_inv @ R_rob_0 @ (torque - friction_angular * torque/np.linalg.norm(torque) )).squeeze()
             else:
                 # acceleration_angular= (torque - friction_angular * velocity_angular/np.linalg.norm(velocity_angular) + torque_damp_angular + torque_damp_linear_tau)/I_rotation
-                acceleration_angular= (I_matrix_inv @ (torque - friction_angular * velocity_angular/np.linalg.norm(velocity_angular) + torque_damp_angular + torque_damp_linear_tau)).squeeze()
+                acceleration_angular= (R_0_rob @ I_matrix_inv @ R_rob_0 @ (torque - friction_angular * velocity_angular/np.linalg.norm(velocity_angular) + torque_damp_angular + torque_damp_linear_tau)).squeeze()
             
             delta_velocity_linear = acceleration_linear * time_step
             delta_velocity_angular = acceleration_angular * time_step
@@ -295,7 +333,7 @@ if __name__ == "__main__":
                 else:
                     velocity_linear  += delta_velocity_linear
                 velocity_linear = np.array([0.0, 0.0, 0.0])
-            else:
+            else: #是否也应该分情况，由于 friction
                 velocity_linear  += delta_velocity_linear
             
             if np.linalg.norm(torque) == 0:
@@ -304,31 +342,35 @@ if __name__ == "__main__":
                 else:   
                     velocity_angular  += delta_velocity_angular
                 velocity_angular = np.array([0.0, 0.0, 0.0])
-            else:
+            else:   
                 velocity_angular  += delta_velocity_angular
 
             # velocity_linear  = velocity_linear  * velocity_linear_rate
             # velocity_angular = velocity_angular * velocity_angular_rate
             # rcm 约束下，只取法向速度
             velocity_linear = np.dot(velocity_linear, vector_s_rcm_normalized) * vector_s_rcm_normalized
+            velocity_tau = np.cross(velocity_angular, -vector_rob_rcm)  #在 rcm 约束下，旋转带来的机械臂末端速度
+            velocity_linear = velocity_linear + velocity_tau
 
             velocity_linear_norm = np.linalg.norm(velocity_linear)
             velocity_angular_norm = np.linalg.norm(velocity_angular)
             if velocity_linear_norm > velocity_linear_limit:
                 scale_rate = velocity_linear_limit/velocity_linear_norm
+                print(f'scale rate: {scale_rate}\nvelocity before scale:{velocity_linear},{velocity_angular}')
                 velocity_linear = velocity_linear * scale_rate
                 velocity_angular = velocity_angular * scale_rate
+                print(f'velocity after scale:{velocity_linear},{velocity_angular}')
 
             # if velocity_angular_norm > velocity_angular_limit:
             #     velocity_angular = velocity_angular/velocity_angular_norm * velocity_angular_limit
 
-            velocity_tau = np.cross(velocity_angular, -vector_rob_rcm)  #在 rcm 约束下，旋转带来的机械臂末端速度
-            velocity_linear = velocity_linear + velocity_tau
             
+            
+
+            # RCM 补偿
             vector_rob_z = T_0_rob[:3,2].squeeze()
             foot_position = T_0_rob[:3,3].squeeze() + vector_rob_z * np.dot(vector_rob_z, vector_rob_rcm)
             rcm_error = foot_position - rcm_position  #由rcm点指向腔镜轴线上的垂足
-
             if np.linalg.norm(rcm_error) > rcm_error_threshold:
                 rcm_error_velocity = - rcm_velocity_rate * rcm_error
             else:
@@ -368,11 +410,24 @@ if __name__ == "__main__":
 
             if count >= pub_count:
                 count = 0
-                # rob.my_speedl(velocity_linear.tolist()+[0, 0, 0],0.5,0.2)
-                # rob.my_speedl([0,0,0]+velocity_angular.tolist(),0.5,0.2)
-                # rob.my_speedl(velocity_linear.tolist()+velocity_angular.tolist(),0.5,0.2)
-                # rokae.cv_cmd((velocity_linear + rcm_error_velocity).tolist()+velocity_angular.tolist() )
+                # ur的运动指令
+                    # rob.my_speedl(velocity_linear.tolist()+[0, 0, 0],0.5,0.2)
+                    # rob.my_speedl([0,0,0]+velocity_angular.tolist(),0.5,0.2)
+                    # rob.my_speedl(velocity_linear.tolist()+velocity_angular.tolist(),0.5,0.2)
+                # 珞石的运动指令
+                rokae.cv_cmd((velocity_linear + rcm_error_velocity).tolist()+velocity_angular.tolist() )
+                # rokae.cv_cmd(np.array([0,0,0,velocity_angular[0],0,0]))
                 print(  f'速度1:\t{velocity_linear} \t{velocity_angular} ')
+
+                # --- 用于观测 速度指令（不影响运动，仅用于观测）
+                msg_TwistStamped.header.stamp = rospy.Time.now()
+                msg_TwistStamped.twist.linear.x = velocity_linear[0]
+                msg_TwistStamped.twist.linear.y = velocity_linear[1]
+                msg_TwistStamped.twist.linear.z = velocity_linear[2]
+                msg_TwistStamped.twist.angular.x = velocity_angular[0]
+                msg_TwistStamped.twist.angular.y = velocity_angular[1]
+                msg_TwistStamped.twist.angular.z = velocity_angular[2]
+                pub_velocity_cmd.publish(msg_TwistStamped)
 
                 #此处每个发布循环存储一次
                 if __save_data:
@@ -415,6 +470,14 @@ if __name__ == "__main__":
             np.savetxt(rcm_error_path, np.array(rcm_error_list), delimiter=',')
             np.savetxt(velocity_angular_path, np.array(velocity_angular_list), delimiter=',')
             np.savetxt(velocity_linear_path, np.array(velocity_linear_list), delimiter=',')
-
+            print(f'数据保存完毕')
+            print(f'开始计算最大力、速度...')
+            force_filtered = np.array(force_filtered_list)
+            force = force_filtered[:,:3]
+            torque = force_filtered[:,3:6]
+            print(f'最大力: {max_norm(force,1)}')
+            print(f'最大力矩: {max_norm(torque,1)}')
+            print(f'最大线速度: {max_norm(np.array(velocity_linear_list),1)}')
+            print(f'最大角速度: {max_norm(np.array(velocity_angular_list),1)}')
 
 

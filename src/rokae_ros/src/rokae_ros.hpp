@@ -8,6 +8,8 @@
 #include <thread>
 #include "rokae/robot.h"
 #include "print_helper.hpp"
+#include <std_msgs/String.h>
+
 
 using namespace rokae;
 
@@ -18,7 +20,10 @@ enum ros_control_mode
     cf,//CartesianForce
     jp,//JointPosition
     jv,//JointVelocity
-    jf //JointForce
+    jf, //JointForce
+    drag_start, //用于珞石自带的手动拖动
+    drag_stop,
+    dragging
 };
 
 class ROKAE_ROS
@@ -65,7 +70,7 @@ private:
 
     // ros相关的参数
     ros::Publisher js_pub_; // 关节状态发布
-    ros::Publisher cp_pub_; // 笛卡尔位置发布
+    ros::Publisher cp_pub_; // 笛卡尔位置发布`
     ros::Publisher cv_pub_; // 笛卡尔速度发布
     ros::Publisher ca_pub_; // 笛卡尔加速度发布
     ros::Publisher cf_pub_; // 笛卡尔力发布
@@ -76,6 +81,7 @@ private:
     ros::Subscriber cp_sub_; // 笛卡尔速度接收
     ros::Subscriber cv_sub_; // 笛卡尔速度接收
     ros::Subscriber cf_sub_; // 笛卡尔力和力矩接收
+    ros::Subscriber drag_sub; // 珞石自带拖动模式接收
     // 订阅消息的回调函数
     void jp_cb(const sensor_msgs::JointState::ConstPtr &msg);
     void jv_cb(const sensor_msgs::JointState::ConstPtr &msg);
@@ -83,6 +89,8 @@ private:
     void cp_cb(const geometry_msgs::PoseStamped::ConstPtr &msg);
     void cv_cb(const geometry_msgs::TwistStamped::ConstPtr &msg);
     void cf_cb(const geometry_msgs::WrenchStamped::ConstPtr &msg);
+    void drag_cb(const std_msgs::String::ConstPtr &msg);
+
 
     // 关节控制消息
     std::array<double, 7> jp_command;
@@ -130,6 +138,7 @@ ROKAE_ROS::ROKAE_ROS(const std::string &m_ip, const std::string &local_ip)
     cp_sub_ = nh.subscribe("rokae/command/CartesianPose", 1, &ROKAE_ROS::cp_cb, this);
     cv_sub_ = nh.subscribe("rokae/command/Twist", 1, &ROKAE_ROS::cv_cb, this);
     cf_sub_ = nh.subscribe("rokae/command/Wrench", 1, &ROKAE_ROS::cf_cb, this);
+    drag_sub = nh.subscribe("rokae/command/drag", 1, &ROKAE_ROS::drag_cb, this);
 
     cv_command={0,0,0,0,0,0};
 
@@ -333,6 +342,22 @@ void ROKAE_ROS::cf_cb(const geometry_msgs::WrenchStamped::ConstPtr &msg)
 
 }
 
+void ROKAE_ROS::drag_cb(const std_msgs::String::ConstPtr &msg)
+{
+    std::cout<<"drag_cd receive: "<<msg->data.c_str()<<std::endl;
+    if(msg->data == "drag_start")
+    {
+        control_mode = ros_control_mode::drag_start;
+        std::cout<<"control_mode: "<<control_mode<<std::endl;
+    }
+    else if(msg->data == "drag_stop")
+    {
+        control_mode = ros_control_mode::drag_stop;
+        std::cout<<"control_mode: "<<control_mode<<std::endl;
+    }
+    
+}
+
 ////////////////////////////////////////////////////////////////////////////////////
 // 机器人回调
 JointPosition ROKAE_ROS::move_position_callback()
@@ -509,9 +534,40 @@ void ROKAE_ROS::start_control()
 
     while (ros::ok())
     {
-
-        rtCon_->stopLoop();
-        rtCon_->stopMove();
+        if(control_mode == ros_control_mode::drag_start)
+        {
+            std::cout<<"循环进入 drag_start 分支"<<std::endl;
+            rtCon_->stopLoop();
+            rtCon_->stopMove();
+            robot_ptr_->setOperateMode(rokae::OperateMode::manual, ec_);// 打开拖动之前，需要机械臂处于手动模式下电状态
+            robot_ptr_->setPowerState(false, ec_);// 打开拖动之前，需要机械臂处于手动模式下电状态
+            robot_ptr_->enableDrag(DragParameter::cartesianSpace, DragParameter::freely, ec_);// 笛卡尔空间，自由拖动
+            std::cout<<"mode change time""打开拖动"<<ec_<<std::endl;
+            std::this_thread::sleep_for(std::chrono::seconds(2)); // 等待切换控制模式
+            control_mode = ros_control_mode::dragging;
+            std::cout<<"已开启拖动模式..."<<std::endl;
+        }
+        else if(control_mode == ros_control_mode::drag_stop)
+        {
+            std::cout<<"循环进入 drag_stop 分支"<<std::endl;
+            rtCon_->stopLoop();
+            rtCon_->stopMove();
+            robot_ptr_-> disableDrag(ec_);
+            std::this_thread::sleep_for(std::chrono::seconds(2)); // 等待切换控制模式
+            control_mode == ros_control_mode::jp;
+        }
+        else if(control_mode == ros_control_mode::dragging)
+        {
+            send_state();
+            // std::cout<<"dragging"<<std::endl;
+            continue;
+        }
+        else
+        {
+            rtCon_->stopLoop();
+            rtCon_->stopMove();
+        }
+        
 
         if(control_mode == ros_control_mode::cp)
         {
@@ -545,7 +601,8 @@ void ROKAE_ROS::start_control()
         // 设置回调函数
         std::cout<<"mode change time"<< ros::Time::now().toSec() - time_change_mode <<std::endl;
         // 阻塞loop
-        rtCon_->startLoop(true);
+        if(control_mode != ros_control_mode::dragging )
+            rtCon_->startLoop(true);
 
     }
 
