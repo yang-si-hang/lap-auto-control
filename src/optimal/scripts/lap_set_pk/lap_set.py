@@ -40,7 +40,7 @@ camera_usb_id = 0
 
 # -------------------------------- RCM + tip_0 器械末端初始位置 --------------------------------
 coordinate_set_path = f'{os.path.dirname(__file__)}/../../data/coordinate_set/'
-camera_rcm_pose_file = [coordinate_set_path + 'camera_rcm_pose.csv',    coordinate_set_path + 'camera_rcm_pose1.csv']
+camera_rcm_pose_file = [coordinate_set_path + 'camera_rcm_pose.csv',    coordinate_set_path + 'camera_rcm_pose1.csv',    coordinate_set_path + 'camera_rcm_pose2.csv',    coordinate_set_path + 'camera_rcm_pose3.csv']
 left_rcm_p_file = coordinate_set_path + 'left_rcm_p.csv'
 right_rcm_p_file = coordinate_set_path + 'right_rcm_p.csv'
 
@@ -54,7 +54,7 @@ T_rob_tool = np.array([     [-1.0 , 0.0 ,   0.0 ,   -0.0],
 
 
 #2023.09.18 ur5 左臂第一版参数
-T_0_rcm = np.loadtxt(camera_rcm_pose_file[1])
+T_0_rcm = np.loadtxt(camera_rcm_pose_file[3])
 # T_0_rcm = transl(-0.4504586100287476, 0.0048914174271517, 0.22233258834111135) @ trotx(np.pi)  @ trotz(np.pi/2)
 # T_0_rcm = transl(-0.5004586100287476, 0.0048914174271517, 0.22233258834111135) @ trotx(np.pi)  @ trotz(np.pi/2)
 # print('T_0_rcm:\n',T_0_rcm)
