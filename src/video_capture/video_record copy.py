@@ -35,6 +35,7 @@ import torch
 
 import threading
 import queue
+import psutil
 
 
 import signal
@@ -50,6 +51,7 @@ from lap_set_pk import lap_set
 
 video_file_path = lap_set.video_file_path
 video_time_stamp_file_path = lap_set.video_time_stamp_file_path
+video_time_stamp_capture_file_path = '/home/irobotcare/桌面/EX_Data/lap/test/video_timestamp_capture.txt' 
 
 def get_system_uptime():
     with open('/proc/uptime', 'r') as f:
@@ -105,6 +107,7 @@ if __name__ == '__main__':
 
 
     video_time_stamp_file = open(video_time_stamp_file_path, 'a')
+    video_time_stamp_capture_file = open(video_time_stamp_capture_file_path, 'a')
 
     # 打开USB摄像头
     capture = cv2.VideoCapture(0)
@@ -112,6 +115,15 @@ if __name__ == '__main__':
     capture.set(cv2.CAP_PROP_FPS, lap_set.video_fps)
     capture.set(4, lap_set.video_height)  # 图片高度
     capture.set(3, lap_set.video_width)  # 图片宽度
+
+    # 设置文本参数
+    position = (50, 50)  # 文本起始位置（x, y）
+    font = cv2.FONT_HERSHEY_SIMPLEX  # 字体类型
+    font_scale = 3  # 字体大小
+    color = (255, 255, 255)  # 字体颜色（白色，BGR格式）
+    thickness = 3  # 字体厚度
+
+    
 
     # 检查摄像头是否成功打开
     if not capture.isOpened():
@@ -136,21 +148,34 @@ if __name__ == '__main__':
             loop_start_time = time.time()
 
             ret, frame = capture.read()
-            time_stamp = time.time()
             timestamp_temp = capture.get(cv2.CAP_PROP_POS_MSEC)
-            print(timestamp_temp)
+            time_stamp = time.time()
+            timestamp_temp2 = time.perf_counter()*1000 # *1000=ms
+            # print(f'time.time:{time_stamp}')
+            print(f'1:{timestamp_temp2}')
+            print(f'2:{timestamp_temp}')
+            print(f'3:{timestamp_temp2-timestamp_temp}')
+            # print(f'psutil: {psutil.cpu_times()[3]}')
+            # t = os.popen('uptime -p').read()
+            # print(f'os:{t}')
+            
             
             if not ret:
                 continue
+
+            # 在图像上写文字
+            cv2.putText(frame, f'capture time:{timestamp_temp:.2f}', position, font, font_scale, color, thickness)
+
 
             # 将颜色通道的顺序改变为RGR
             if lap_set.rgb2bgr:
                 frame = frame[:, :, [2, 1, 0]]
 
+            
             cv2.imshow('Frame', frame)
             output.write(frame)
             cv2.waitKey(1)
-            data = f'{time_stamp}\n'
+            data = f'{timestamp_temp2}\n'
             video_time_stamp_file.write(data)
             record_time_length = time_stamp - record_start_time
             if int(record_time_length)%10 == 0:

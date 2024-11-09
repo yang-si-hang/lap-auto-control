@@ -13,6 +13,7 @@ from math3d.transform import Transform as Trans
 # sys.path.append("/home/yiliao/wyh/laparoscope_ws/src/optimal/scripts")
 # from lap_set_pk import lap_set
 
+data_folder = '/home/irobotcare/桌面/EX_Data/lap/test'
 
 # ---------------------------------------- 视频保存 ----------------------------------------
 video_file_path = '/home/irobotcare/桌面/EX_Data/lap/test/output_video.avi'                 #视频路径
@@ -24,7 +25,7 @@ video_height = 1080
 video_fps = 30.0
 
 # ------------------------------------------ 动捕 ------------------------------------------
-qualisys_master_ip = "192.168.254.1"
+qualisys_master_ip = "192.168.253.1"
 qualisys_password = ''
 qtm_rigid_file_path = '/home/irobotcare/桌面/EX_Data/lap/test/rigid.txt'
 rigid_end_record_file_path = '/home/irobotcare/桌面/EX_Data/lap/test/rigid_end.txt'
@@ -41,6 +42,7 @@ camera_usb_id = 0
 # -------------------------------- RCM + tip_0 器械末端初始位置 --------------------------------
 coordinate_set_path = f'{os.path.dirname(__file__)}/../../data/coordinate_set/'
 camera_rcm_pose_file = [coordinate_set_path + 'camera_rcm_pose.csv',    coordinate_set_path + 'camera_rcm_pose1.csv',    coordinate_set_path + 'camera_rcm_pose2.csv',    coordinate_set_path + 'camera_rcm_pose3.csv']
+                                            # 0: 前下方rcm                                      1:前方1.3m                                        2：前方1.4m                                       3：左前方                                            
 left_rcm_p_file = coordinate_set_path + 'left_rcm_p.csv'
 right_rcm_p_file = coordinate_set_path + 'right_rcm_p.csv'
 
@@ -52,9 +54,15 @@ T_rob_tool = np.array([     [-1.0 , 0.0 ,   0.0 ,   -0.0],
                             [-0.0, -0.0 ,   1.0 ,   0.105],
                             [ 0.       ,   0.      ,    0.       ,   1.        ]])
 
+# 定位针，快拆版本
+rob_needle_end_vector = np.array([0, 0, 0.2])
+
+# 腹腔镜末端到机械臂末端法兰尺寸
+rob_lap_end_vector = np.array([0, 0, 0.3])
+
 
 #2023.09.18 ur5 左臂第一版参数
-T_0_rcm = np.loadtxt(camera_rcm_pose_file[3])
+T_0_rcm = np.loadtxt(camera_rcm_pose_file[2])
 # T_0_rcm = transl(-0.4504586100287476, 0.0048914174271517, 0.22233258834111135) @ trotx(np.pi)  @ trotz(np.pi/2)
 # T_0_rcm = transl(-0.5004586100287476, 0.0048914174271517, 0.22233258834111135) @ trotx(np.pi)  @ trotz(np.pi/2)
 # print('T_0_rcm:\n',T_0_rcm)

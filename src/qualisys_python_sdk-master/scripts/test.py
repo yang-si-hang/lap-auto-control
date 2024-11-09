@@ -1,6 +1,6 @@
 import os
 import glob
-
+import time
 # 文件夹路径
 folder_path = '/home/irobotcare/桌面/EX_Data/lap/test/rigid_end_calibration/'
 
@@ -16,3 +16,12 @@ rigid_names = [i.replace('.txt','') for i in file_names]
 print(file_paths)
 print(file_names)
 print(rigid_names)
+
+try:
+    while True:
+        print(time.perf_counter())
+        time.sleep(1)
+
+except KeyboardInterrupt:
+    print("KeyboardInterrupt")
+

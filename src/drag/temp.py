@@ -111,3 +111,28 @@ def max_norm(matrix, axis = 1):
     return row_norms
 
 print(max_norm(matrix,1))
+
+def get_system_uptime():
+    with open('/proc/uptime', 'r') as f:
+        seconds = float(f.read().split()[0])
+        print(seconds)
+
+
+
+get_system_uptime()
+
+import psutil, os, time
+p = psutil.Process(os.getpid())
+for i in range(5):
+    print(i)
+    get_system_uptime()
+    print(p.create_time())
+    print(time.time())
+    print(psutil.cpu_times())
+    print(psutil.cpu_times()[3])
+    time.sleep(0.001)
+
+
+while True:
+    print(time.perf_counter()*1000)
+    time.sleep(0.001)

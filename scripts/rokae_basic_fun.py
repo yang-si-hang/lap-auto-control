@@ -364,8 +364,8 @@ class rokae:
             self.jp_stop()
             self.__Mode = 'jp'
         elif mode == 'drag':
-            self.__pub_grag.publish('drag_start')
             self.__Mode = 'drag'
+            self.__pub_grag.publish('drag_start')
         print(f'mode changed to {mode}')
 
     def stop(self,_time = 1.0):

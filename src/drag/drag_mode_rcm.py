@@ -71,16 +71,18 @@ torque_damp_linear_tau_list = []
 
 
 force_threshold = 5
-torque_threshold = 0.2
+torque_threshold = 0.1
 
-friction_linear = 1
-friction_angular = 0.05
+# friction_linear = 1
+# friction_angular = 0.05
+friction_linear = 0
+friction_angular = 0
 
 mass = 0.5
 # I_rotation = 0.6
 I_rotation_x = 1.2
 I_rotation_y = 1.2
-I_rotation_z = 0.45
+I_rotation_z = 0.1
 I_matrix = np.zeros((3,3))
 I_matrix[0,0] = I_rotation_x
 I_matrix[1,1] = I_rotation_y
@@ -93,7 +95,7 @@ velocity_linear_norm = 0
 velocity_angular_norm = 0
 # velocity_linear_rate = 2
 # velocity_angular_rate = 1
-velocity_linear_limit = 0.05
+velocity_linear_limit = 0.1
 velocity_angular_limit = 10/180*math.pi
 
 
@@ -104,7 +106,7 @@ damping_linear_z = 100
 damping_angular_matrix = np.zeros((3,3))
 damping_angular_matrix[0,0] = 0.4
 damping_angular_matrix[1,1] = 0.4
-damping_angular_matrix[2,2] = 0.2
+damping_angular_matrix[2,2] = 0.4
 
 rcm_error_velocity = np.array([0.0, 0.0, 0.0])
 rcm_velocity_rate = 1.0/2.5
@@ -275,12 +277,18 @@ if __name__ == "__main__":
 
             
             # print(f'测量力:{np.linalg.norm(force)}\t测量力矩:{torque}')
-            if np.linalg.norm(force) < force_threshold:
+            force_norm = np.linalg.norm(force)
+            if force_norm < force_threshold:
                 force = np.array([0.0, 0.0, 0.0])
-            # else:
-            #     print(f'force {np.linalg.norm(force)} > force_threshold {force_threshold}!!!!!!!!')
-            if np.linalg.norm(torque) < torque_threshold:
+            else:
+                force = force/force_norm *(force_norm - force_threshold)
+
+            torque_norm = np.linalg.norm(torque)
+            if torque_norm < torque_threshold:
                 torque = np.array([0.0, 0.0, 0.0])
+            else:
+                torque = torque/torque_norm * (torque_norm - torque_threshold)
+
             force_n =np.dot(force, vector_s_rcm_normalized) * vector_s_rcm_normalized
             force_tau = force - force_n
             torque_force_tau = np.cross(-vector_s_rcm, force_tau)  #以 rcm 为轴点的切向力的力矩
@@ -415,8 +423,8 @@ if __name__ == "__main__":
                     # rob.my_speedl([0,0,0]+velocity_angular.tolist(),0.5,0.2)
                     # rob.my_speedl(velocity_linear.tolist()+velocity_angular.tolist(),0.5,0.2)
                 # 珞石的运动指令
-                rokae.cv_cmd((velocity_linear + rcm_error_velocity).tolist()+velocity_angular.tolist() )
-                # rokae.cv_cmd(np.array([0,0,0,velocity_angular[0],0,0]))
+                # rokae.cv_cmd((velocity_linear + rcm_error_velocity).tolist()+velocity_angular.tolist() )
+                rokae.cv_cmd(np.array([0,0,0,velocity_angular[0],0,0])) #仅绕x轴转动
                 print(  f'速度1:\t{velocity_linear} \t{velocity_angular} ')
 
                 # --- 用于观测 速度指令（不影响运动，仅用于观测）

@@ -1,6 +1,7 @@
 """
     Streaming 6Dof from QTM
     文件路径、ip、密码 在lap_set中修改
+    2024.11.09: 优化了退出时的文件保存，时间戳更换为 time.perf_counter()。
 """
 
 import asyncio
@@ -109,7 +110,7 @@ async def main():
         #         packet.framenumber, info.body_count
         #     )
         # )
-        time_stamp = time.time()
+        time_stamp = time.perf_counter()
         record_time_length = time_stamp - time_start
         print(f"\n{time_stamp}")
         print(f'录制时长：{int(record_time_length//3600):d}时 {(int(record_time_length)%3600)//60:d}分 {int(record_time_length%60):d}秒')
@@ -132,7 +133,7 @@ async def main():
             data = f'{time_stamp},\t{rigid_index},\t{rigid_name},\t{position[0]/1000},{position[1]/1000},{position[2]/1000},\t{q[0]},{q[1]},{q[2]},{q[3]}\n'
             file.write(data)
             # if not np.isnan(position[0]): print(f'{data}')
-            # print(f'{(time.time()-time_start):.6f} s')
+            # print(f'{(time.perf_counter()-time_start):.6f} s')
             # print("{} - Pos: {} - Rot: {}".format(calibration_rigid_name, position, rotation))
         
 
@@ -145,10 +146,12 @@ async def main():
     await connection.stream_frames(components=["6d"], on_packet=on_packet)
     
     # while not rospy.is_shutdown():
+
     while True:
         # Wait asynchronously seconds
         await asyncio.sleep(1)
         pass
+
 
 
 
@@ -158,13 +161,21 @@ async def main():
 
 
 if __name__ == "__main__":
-    time_start = time.time()
+    time_start = time.perf_counter()
     file = open(file_name, 'a')
     file.truncate(0)
 
     # rospy.init_node('qualisys_rigids_record', anonymous=True)
 
     
+    try:
+        # Run our asynchronous function until complete
+        asyncio.get_event_loop().run_until_complete(main())
+        while True:
+            pass
 
-    # Run our asynchronous function until complete
-    asyncio.get_event_loop().run_until_complete(main())
+    except KeyboardInterrupt:
+        file.close()
+        print(f"\nfile closed: {file_name}\n")
+
+    
