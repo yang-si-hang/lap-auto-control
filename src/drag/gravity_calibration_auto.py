@@ -2,6 +2,8 @@
 注意：
     1、正确设置 lap_set.T_rob_sensor
     2、建议运行 rokae_init_pose 
+    
+    文件路径仅依赖于 lap_set.data_folder
 '''
 
 import os.path
@@ -25,7 +27,6 @@ from std_msgs.msg import Header
 
 
 
-np.set_printoptions(precision=6, suppress=True)
 
 sys.path.append("/home/irobotcare/wyh/laparoscope_ws/src/optimal/scripts")
 from lap_set_pk import lap_set
@@ -38,6 +39,10 @@ import key_signal
 
 sys.path.append(f"{os.path.dirname(__file__)}/../../scripts")
 import rokae_basic_fun 
+
+#==============================================================================================
+
+np.set_printoptions(precision=6, suppress=True)
 
 
 T_rob_sensor = lap_set.T_rob_sensor
@@ -180,9 +185,9 @@ if __name__ == '__main__':
     F_sensor = force_sensor_receiver.force_sensor_receiver_class()
 
 
-    F_file = f'{os.path.dirname(__file__)}/calibration_data/F.txt'
-    pose_file = f'{os.path.dirname(__file__)}/calibration_data/pose.txt'
-    G_L_F0_file = f'{os.path.dirname(__file__)}/calibration_data/G_L_F0.txt'
+    F_file = f'{lap_set.data_folder}/force_calibration/F.txt'
+    pose_file = f'{lap_set.data_folder}/force_calibration/pose.txt'
+    G_L_F0_file = f'{lap_set.data_folder}/force_calibration/G_L_F0.txt'
 
     
     

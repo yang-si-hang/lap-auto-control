@@ -25,12 +25,18 @@ import sys
 import os
 sys.path.append(f"{os.path.dirname(__file__)}/../../optimal/scripts")
 from lap_set_pk import lap_set
-
+#================================================================================
+data_num = 0
 time_start = None
 rigid_end_record_file = lap_set.rigid_end_record_file_path
-rigid_end_calibration_files = glob.glob(os.path.join(lap_set.rigid_end_calibration_file_path, '*'))
+rigid_end_calibration_files = glob.glob(os.path.join(lap_set.rigid_end_calibration_folder, '*'))
 rigid_end_calibration_file_names  = [os.path.basename(file_path) for file_path in rigid_end_calibration_files]
 rigid_names = [i.replace('.txt','') for i in rigid_end_calibration_file_names]
+p_rigids_ends = {}
+for _rigid_name in rigid_names:
+    p_rigids_ends[_rigid_name] = np.loadtxt(lap_set.rigid_end_calibration_folder + _rigid_name + '.txt')
+# print(p_rigids_ends)
+# print(p_rigids_ends['temp'])
 
 
 # calibration_rigid_msg = PoseStamped()
@@ -60,6 +66,7 @@ async def main():
     global calibration_rigid_name
     global calibration_rigid_msg
     global msg_finished_flag
+    global data_num
     # Connect to qtm
     # connection = await qtm_rt.connect("127.0.0.1")
     connection = await qtm_rt.connect(lap_set.qualisys_master_ip)
@@ -97,7 +104,7 @@ async def main():
     # wanted_body1 = "UR_L_Li" 
 
     def on_packet(packet):
-
+        global data_num
  
 
         info, bodies = packet.get_6d()
@@ -106,7 +113,7 @@ async def main():
         #         packet.framenumber, info.body_count
         #     )
         # )
-        time_stamp = time.time()
+        time_stamp = time.perf_counter()
         record_time_length = time_stamp - time_start
         print(f"\n{time_stamp}")
         print(f'录制时长：{int(record_time_length//3600):d}时 {(int(record_time_length)%3600)//60:d}分 {int(record_time_length%60):d}秒')
@@ -125,8 +132,8 @@ async def main():
                     # print(f'{rigid_name}:\n{T_qualisys_rigid}')
 
                     # print(f"{rigid_name} \n{R}\n{position}")
-                    p_rigid_end = np.loadtxt(lap_set.rigid_end_calibration_file_path + rigid_name + '.txt')
-                    p_qalisys_end = T_qualisys_rigid @ p_rigid_end
+                    # p_rigid_end = np.loadtxt(lap_set.rigid_end_calibration_folder + rigid_name + '.txt')
+                    p_qalisys_end = T_qualisys_rigid @ p_rigids_ends[rigid_name]
 
                     print(f"{rigid_name}:{p_qalisys_end[0]},{p_qalisys_end[1]},{p_qalisys_end[2]}")
 
@@ -137,9 +144,9 @@ async def main():
                 data = f'{time_stamp},\t{rigid_index},\t{rigid_name},\t{p_qalisys_end[0]},{p_qalisys_end[1]},{p_qalisys_end[2]}\n'
                 file.write(data)
                 # if not np.isnan(position[0]): print(f'{data}')
-                # print(f'{(time.time()-time_start):.6f} s')
+                # print(f'{(time.perf_counter()-time_start):.6f} s')
                 # print("{} - Pos: {} - Rot: {}".format(calibration_rigid_name, position, rotation))
-            
+        data_num += 1
 
 
        
@@ -163,7 +170,7 @@ async def main():
 
 
 if __name__ == "__main__":
-    time_start = time.time()
+    time_start = time.perf_counter()
     file = open(rigid_end_record_file, 'a')
     file.truncate(0)
 
@@ -171,6 +178,10 @@ if __name__ == "__main__":
     # rospy.init_node('qualisys_rigids_record', anonymous=True)
 
     
-
-    # Run our asynchronous function until complete
-    asyncio.get_event_loop().run_until_complete(main())
+    try:
+        # Run our asynchronous function until complete
+        asyncio.get_event_loop().run_until_complete(main())
+    except KeyboardInterrupt:
+        print(f'record finished\ndata num:{data_num}')
+        file.close()
+        

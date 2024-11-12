@@ -16,8 +16,9 @@ from math3d.transform import Transform as Trans
 data_folder = '/home/irobotcare/桌面/EX_Data/lap/test'
 
 # ---------------------------------------- 视频保存 ----------------------------------------
-video_file_path = '/home/irobotcare/桌面/EX_Data/lap/test/output_video.avi'                 #视频路径
-video_time_stamp_file_path = '/home/irobotcare/桌面/EX_Data/lap/test/video_timestamp.txt'   #视频每一帧对应时间戳保存路径
+video_file_path = f'{data_folder}/video/output_video.mp4'                 #视频路径
+video_time_stamp_file_path = f'{data_folder}/video/video_timestamp.txt'   #视频每一帧对应时间戳保存路径
+video_time_stamp_cvcap_file_path = f'{data_folder}/video/video_timestamp_cvcap_ms.txt'  #两种时间戳
 
 rgb2bgr = True          #true 则执行顺序翻转
 video_width = 1920   #并未在所有文件中都采用引用，有些文件中还是用数值设置的分辨率
@@ -27,9 +28,9 @@ video_fps = 30.0
 # ------------------------------------------ 动捕 ------------------------------------------
 qualisys_master_ip = "192.168.253.1"
 qualisys_password = ''
-qtm_rigid_file_path = '/home/irobotcare/桌面/EX_Data/lap/test/rigid.txt'
-rigid_end_record_file_path = '/home/irobotcare/桌面/EX_Data/lap/test/rigid_end.txt'
-rigid_end_calibration_file_path = '/home/irobotcare/桌面/EX_Data/lap/test/rigid_end_calibration/'
+qtm_rigid_file_path = f'{data_folder}/Qualisys_data/rigid.txt'
+rigid_end_record_file_path = f'{data_folder}/Qualisys_data/rigid_end.txt'
+rigid_end_calibration_folder = f'{data_folder}/rigid_end_calibration/'
 
 
 # ------------------------------------- rob、camera ip -------------------------------------
@@ -40,11 +41,17 @@ robot_ip = "192.168.253.10"
 camera_usb_id = 0
 
 # -------------------------------- RCM + tip_0 器械末端初始位置 --------------------------------
-coordinate_set_path = f'{os.path.dirname(__file__)}/../../data/coordinate_set/'
-camera_rcm_pose_file = [coordinate_set_path + 'camera_rcm_pose.csv',    coordinate_set_path + 'camera_rcm_pose1.csv',    coordinate_set_path + 'camera_rcm_pose2.csv',    coordinate_set_path + 'camera_rcm_pose3.csv']
-                                            # 0: 前下方rcm                                      1:前方1.3m                                        2：前方1.4m                                       3：左前方                                            
-left_rcm_p_file = coordinate_set_path + 'left_rcm_p.csv'
-right_rcm_p_file = coordinate_set_path + 'right_rcm_p.csv'
+coordinate_set_folder = f'{data_folder}/coordinate_set'
+camera_rcm_pose_file = [f'{coordinate_set_folder}/camera_rcm_pose.csv',\
+                        f'{coordinate_set_folder}/camera_rcm_pose1.csv',\
+                        f'{coordinate_set_folder}/camera_rcm_pose2.csv',\
+                        f'{coordinate_set_folder}/camera_rcm_pose3.csv'  ]
+                        # 0: 前下方rcm
+                        # 1: 前方1.3m
+                        # 2：前方1.4m
+                        # 3：左前方                                            
+left_rcm_p_file = f'{coordinate_set_folder}/left_rcm_p.csv'
+right_rcm_p_file = f'{coordinate_set_folder}/right_rcm_p.csv'
 
 
 # 标定针

@@ -4,6 +4,7 @@
     该程序用于术前测量、设定、刚体到器械末端的变换矩阵
     
     注意：除了main，main中的 def on_packet(packet): 也要用global
+        输入时根据提示的单位输入（由于qualisys系统为mm，输入也为mm，但后续计算会换为m）
 """
 
 import asyncio
@@ -38,7 +39,7 @@ msg_finished_flag = False
 
 calibrating_rigid_name = ''
 record_finish = True
-rigid_end_file_path = lap_set.rigid_end_calibration_file_path
+rigid_end_file_path = lap_set.rigid_end_calibration_folder
 
 
 QTM_FILE = pkg_resources.resource_filename("qtm_rt", "data/Demo.qtm")
@@ -118,7 +119,7 @@ async def main():
         #         packet.framenumber, info.body_count
         #     )
         # )
-        time_stamp = time.time()
+        time_stamp = time.perf_counter()
         record_time_length = time_stamp - time_start
         # print(f"\n{time_stamp}")
         # print(f'录制时长：{int(record_time_length//3600):d}时 {(int(record_time_length)%3600)//60:d}分 {int(record_time_length%60):d}秒')
@@ -140,7 +141,7 @@ async def main():
 
             # file.write(data)
             
-            # print(f'{(time.time()-time_start):.6f} s')
+            # print(f'{(time.perf_counter()-time_start):.6f} s')
             # print("{} - Pos: {} - Rot: {}".format(calibration_rigid_name, position, rotation))
 
             if rigid_name == calibrating_rigid_name and not record_finish :
@@ -153,8 +154,8 @@ async def main():
                 T_rigid_qualisys = np.linalg.inv(T_qualisys_rigid)
                 # T_rigid_qualisys = np.concatenate((R.squeeze().T, np.array([[position[0]/1000,position[1]/1000,position[2]/1000]]).T*-1), axis=1)
                 # T_rigid_qualisys = np.concatenate((T_rigid_qualisys, np.array([[0,0,0,1]])), axis=0)
-                print(f'T_rigid_qualisys {rigid_name}:\n{T_rigid_qualisys}\n')
-                print(T_qualisys_rigid @ T_rigid_qualisys)
+                # print(f'T_rigid_qualisys {rigid_name}:\n{T_rigid_qualisys}\n')
+                # print(T_qualisys_rigid @ T_rigid_qualisys)
 
 
                 if np.isnan(position[0]):
@@ -163,14 +164,15 @@ async def main():
 
 
                 usr_input = input("请选择末端球位置模式：\n1：单球模式\t2:双球模式\t回车：跳过\n")
+                print('输入单位: mm')
                 if usr_input == '1':
 
                     while  True:
                         temp = []
-                        temp.append(float(input('请输入x：')))
-                        temp.append(float(input('请输入y：')))
-                        temp.append(float(input('请输入z：')))
-                        usr_input = input(f'末端标记球坐标为：{temp}\n确认无误请按回车...')
+                        temp.append(float(input('请输入x：'))/1000)
+                        temp.append(float(input('请输入y：'))/1000)
+                        temp.append(float(input('请输入z：'))/1000)
+                        usr_input = input(f'末端标记球坐标为：{temp} (米)\n确认无误请按回车...')
                         if usr_input == '':
                             break
 
@@ -179,18 +181,18 @@ async def main():
                 elif usr_input == '2':
                     while  True:
                         temp1 = []
-                        temp1.append(float(input('请输入x1：')))
-                        temp1.append(float(input('请输入y1：')))
-                        temp1.append(float(input('请输入z1：')))
-                        usr_input = input(f'末端标记球1坐标为：{temp1}\n确认无误请按回车...')
+                        temp1.append(float(input('请输入x1：'))/1000)
+                        temp1.append(float(input('请输入y1：'))/1000)
+                        temp1.append(float(input('请输入z1：'))/1000)
+                        usr_input = input(f'末端标记球1坐标为：{temp1} (米)\n确认无误请按回车...')
                         if usr_input == '':
                             break
                     while  True:
                         temp2 = []
-                        temp2.append(float(input('请输入x2：')))
-                        temp2.append(float(input('请输入y2：')))
-                        temp2.append(float(input('请输入z2：')))
-                        usr_input = input(f'末端标记球2坐标为：{temp2}\n确认无误请按回车...')
+                        temp2.append(float(input('请输入x2：'))/1000)
+                        temp2.append(float(input('请输入y2：'))/1000)
+                        temp2.append(float(input('请输入z2：'))/1000)
+                        usr_input = input(f'末端标记球2坐标为：{temp2} (米)\n确认无误请按回车...')
                         if usr_input == '':
                             break
                     p_qualisys_end = (np.array(temp1) + np.array(temp2))/2
@@ -199,20 +201,20 @@ async def main():
                     p_qualisys_end = np.array([0,0,0]) 
 
                 p_qualisys_end = np.append(p_qualisys_end, np.array([1]))
-                print(f'末端标记球位置:{p_qualisys_end}')
+                print(f'末端标记球位置(米):{p_qualisys_end}')
                 P_rigid_end = T_rigid_qualisys @ p_qualisys_end
 
-                usr_input = input("请输入偏置量x：(无偏置请回车)")
+                usr_input = input("请输入偏置量x(mm)：(无偏置请回车)")
                 if usr_input == '':
                     p_adjust = np.array([0,0,0,0])
                 else:
                     p_adjust = []
-                    p_adjust.append(float(usr_input))
-                    p_adjust.append(float(input("请输入偏置量y：")))
-                    p_adjust.append(float(input("请输入偏置量z：")))
+                    p_adjust.append(float(usr_input)/1000)
+                    p_adjust.append(float(input("请输入偏置量y(mm)："))/1000)
+                    p_adjust.append(float(input("请输入偏置量z(mm)："))/1000)
                     p_adjust.append(0)
                     p_adjust = np.array(p_adjust)
-                    print(f'p_adjust: {p_adjust}')
+                    print(f'p_adjust(m): {p_adjust}')
                 
                 P_rigid_end = P_rigid_end + p_adjust
                 print(f'末端相对刚体位置：{P_rigid_end}')
@@ -257,13 +259,15 @@ async def main():
 
 
 if __name__ == "__main__":
-    time_start = time.time()
+    time_start = time.perf_counter()
 
 
 
     # rospy.init_node('qualisys_rigids_record', anonymous=True)
 
     
-
-    # Run our asynchronous function until complete
-    asyncio.get_event_loop().run_until_complete(main())
+    try:
+        # Run our asynchronous function until complete
+        asyncio.get_event_loop().run_until_complete(main())
+    except KeyboardInterrupt:
+        print('\nfinished')

@@ -6,6 +6,8 @@ shiu() 用于解算 AX=XB 方程组
 
 根据 fold_path 中的 joints 自动运动，并采集数据 T_0_rob、T_cam_rigid 保存在fold_path
 并计算和保存 T_0_camera、T_rob_rigid 保存在 fold_path
+
+文件路径仅依赖于 lap_set.data_folder
 '''
 
 import numpy as np
@@ -28,7 +30,7 @@ from lap_set_pk import lap_set
 
 sys.path.append(f"{os.path.dirname(__file__)}/../../../scripts")
 import rokae_basic_fun 
-
+#=======================================================================================================
 
 rigid_calibrate = 'calibrate'
 
@@ -173,7 +175,7 @@ async def move_and_measure():
         # data = f'{position[0]/1000},{position[1]/1000},{position[2]/1000},\t{q[0]},{q[1]},{q[2]},{q[3]}\n'
     
         # if not np.isnan(position[0]): print(f'{data}')
-        # print(f'{(time.time()-time_start):.6f} s')
+        # print(f'{(time.perf_counter()-time_start):.6f} s')
         # print("{} - Pos: {} - Rot: {}".format(calibration_rigid_calibrate, position, rotation))
         
 
@@ -371,7 +373,7 @@ def calibrate_calculate(_T_0_rob_catted, _T_cam_rigid_catted, T_0_cam_path = Non
     return T_0_camera, T_rob_rigid
 
 if __name__ == "__main__":
-    time_start = time.time()
+    time_start = time.perf_counter()
     rospy.init_node('qualisys_rob_calibration', anonymous=True)
     rokae = rokae_basic_fun.rokae()
     time.sleep(1)

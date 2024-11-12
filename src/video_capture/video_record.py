@@ -1,6 +1,10 @@
 '''
 输出： recording time 并不是一直输出，而是每十秒进行一段输出，避免终端一直滚动
 终止：直接 ctrl c ，捕获到该终端信号后，会进行保存和终端设置。
+
+保存了两种时间戳，注意：单位g不同！！！！！
+time.perf_counter() 单位s
+capture.get(cv2.CAP_PROP_POS_MSEC)  单位ms
 '''
 
 
@@ -35,6 +39,7 @@ import torch
 
 import threading
 import queue
+import psutil
 
 
 import signal
@@ -47,9 +52,21 @@ import termios
 
 sys.path.append(f"{os.path.dirname(__file__)}/../optimal/scripts")
 from lap_set_pk import lap_set
+# ==================================================================================================
+show_flag = False
+write_flag = True  # 是否在图像上写字
 
 video_file_path = lap_set.video_file_path
-video_time_stamp_file_path = lap_set.video_time_stamp_file_path
+video_time_stamp_file_path = lap_set.video_time_stamp_file_path  # 用于保存视频数据传递进来后，time.perf_counter() 的时间戳，单位s
+video_time_stamp_capture_file_path = lap_set.video_time_stamp_cvcap_file_path  # 用于保存 capture.get(cv2.CAP_PROP_POS_MSEC) 时间戳，单位ms
+
+
+frame_index = 0
+
+def get_system_uptime():
+    with open('/proc/uptime', 'r') as f:
+        seconds = float(f.read().split()[0])
+    return seconds
 
 # 捕获线程的任务函数
 def capture_thread(cap, buffer):
@@ -100,13 +117,26 @@ if __name__ == '__main__':
 
 
     video_time_stamp_file = open(video_time_stamp_file_path, 'a')
+    video_time_stamp_capture_file = open(video_time_stamp_capture_file_path, 'a')
+    video_time_stamp_file.truncate(0)
+    video_time_stamp_capture_file.truncate(0)
 
     # 打开USB摄像头
     capture = cv2.VideoCapture(0)
-    capture.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('N', 'V', '1', '2'))
+    # capture.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('N', 'V', '1', '2'))
+    # capture.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('N', 'V', '1', '2'))
     capture.set(cv2.CAP_PROP_FPS, lap_set.video_fps)
     capture.set(4, lap_set.video_height)  # 图片高度
     capture.set(3, lap_set.video_width)  # 图片宽度
+
+    # 设置文本参数
+    position = (50, 50)  # 文本起始位置（x, y）
+    font = cv2.FONT_HERSHEY_SIMPLEX  # 字体类型
+    font_scale = 3  # 字体大小
+    color = (255, 255, 255)  # 字体颜色（白色，BGR格式）
+    thickness = 3  # 字体厚度
+
+    
 
     # 检查摄像头是否成功打开
     if not capture.isOpened():
@@ -118,39 +148,70 @@ if __name__ == '__main__':
     frame_height = int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
     # 创建视频编写器对象，用于保存视频
-    output = cv2.VideoWriter(video_file_path, cv2.VideoWriter_fourcc(*'XVID'), lap_set.video_fps, (frame_width, frame_height))
+    # output = cv2.VideoWriter(video_file_path, cv2.VideoWriter_fourcc(*'XVID'), lap_set.video_fps, (frame_width, frame_height))
+    output = cv2.VideoWriter(video_file_path, cv2.VideoWriter_fourcc(*'mp4v'), lap_set.video_fps, (frame_width, frame_height))
 
     loop_time = 1.0/lap_set.video_fps
-    record_start_time = time.time()
+    record_start_time = time.perf_counter()
     print("开始录制视频")
 
     try:
         while True:
             
 
-            loop_start_time = time.time()
+            loop_start_time = time.perf_counter()
 
             ret, frame = capture.read()
-            time_stamp = time.time()
+            if not ret:
+                continue
+            
+            frame_index += 1
+
+
+
+            time_stamp_cvcap = capture.get(cv2.CAP_PROP_POS_MSEC) # 单位 ms
+            time_stamp = time.perf_counter() # 单位 s
+
+            # print(f'time.time:{time_stamp}')
+            # print(f'psutil: {psutil.cpu_times()[3]}')
+            # t = os.popen('uptime -p').read()
+            # print(f'os:{t}')
+            
             
             if not ret:
                 continue
+
+            # 在图像上写文字
+            if write_flag:
+                cv2.putText(frame, f'capture time:{time_stamp_cvcap/1000:.5f}', position, font, font_scale, color, thickness)
+                cv2.putText(frame, f'time.perf_counter: {time_stamp:.5f}', (position[0],position[1]+100), font, font_scale, color, thickness)
+
 
             # 将颜色通道的顺序改变为RGR
             if lap_set.rgb2bgr:
                 frame = frame[:, :, [2, 1, 0]]
 
-            cv2.imshow('Frame', frame)
+            if show_flag:
+                cv2.imshow('Frame', frame)
+                
             output.write(frame)
-            cv2.waitKey(1)
-            data = f'{time_stamp}\n'
-            video_time_stamp_file.write(data)
+            video_time_stamp_file.write(f'{time_stamp}\n')
+            video_time_stamp_capture_file.write(f'{time_stamp_cvcap}\n')
+
+
             record_time_length = time_stamp - record_start_time
             if int(record_time_length)%10 == 0:
                 print(f'video recording  time: {time_stamp:.2f}')
                 print(f'录制时长：{int(record_time_length//3600):d}时 {(int(record_time_length)%3600)//60:d}分 {int(record_time_length%60):d}秒')
-            while time.time()-loop_start_time < loop_time :
-                pass
+            
+            if show_flag:
+                cv2.waitKey(1)  
+            
+            remaining_time = loop_time - (time.perf_counter() - loop_start_time)-0.001
+            if remaining_time > 0:
+                time.sleep(remaining_time)
+            # while time.perf_counter()-loop_start_time < loop_time :
+            #     pass
 
 
     # 程序中断处理        
@@ -163,10 +224,14 @@ if __name__ == '__main__':
         termios.tcsetattr(sys.stdin, termios.TCSADRAIN, orig_settings)
         print("------恢复终端设置-----")
         # # 关闭视频编写器对象和摄像头
+        video_time_stamp_file.write(f'{time_stamp}\n')
+        video_time_stamp_capture_file.write(f'{time_stamp_cvcap}\n')
         output.release()
         capture.release()
         video_time_stamp_file.close()
+        video_time_stamp_capture_file.close()
         print("record_finished")
+        print(f'frame_index: {frame_index}')
         
     
 

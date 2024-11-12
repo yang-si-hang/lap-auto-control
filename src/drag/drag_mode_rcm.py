@@ -2,6 +2,8 @@
 仅由角加速度推算切向加速度
 
 rcm纠偏，以末端z轴作为腹腔镜轴线
+
+文件路径仅依赖于 lap_set.data_folder
 '''
 
 import os.path
@@ -35,24 +37,24 @@ import key_signal
 
 sys.path.append(f"{os.path.dirname(__file__)}/../../scripts")
 import rokae_basic_fun 
-
+#=====================================================================================
 
 __save_data = True
 
-data_fold = f"{os.path.dirname(__file__)}/data/"
-force_before_filter_path = f'{data_fold}force_before_filter.txt'
-force_filtered_path = f'{data_fold}force_filtered.txt'
-pose_path = f'{data_fold}pose.txt'
-rcm_error_path = f'{data_fold}rcm_error.txt'
-acceleration_linear_path = f'{data_fold}acceleration_linear.txt'
-acceleration_angular_path = f'{data_fold}acceleration_angular.txt'
-velocity_linear_path = f'{data_fold}velocity_linear.txt'
-velocity_angular_path = f'{data_fold}velocity_angular.txt'
-vector_s_rcm_path = f'{data_fold}vector_s_rcm.txt'
-time_calculate_path = f'{data_fold}time_calculate.txt'
-time_pub_path = f'{data_fold}time_pub.txt'
-torque_force_tau_path = f'{data_fold}torque_force_tau.txt'
-torque_damp_linear_tau_path = f'{data_fold}torque_force_tau.txt'
+data_fold = f"{lap_set.data_folder}/drag_data"
+force_before_filter_path = f'{data_fold}/force_before_filter.txt'
+force_filtered_path = f'{data_fold}/force_filtered.txt'
+pose_path = f'{data_fold}/pose.txt'
+rcm_error_path = f'{data_fold}/rcm_error.txt'
+acceleration_linear_path = f'{data_fold}/acceleration_linear.txt'
+acceleration_angular_path = f'{data_fold}/acceleration_angular.txt'
+velocity_linear_path = f'{data_fold}/velocity_linear.txt'
+velocity_angular_path = f'{data_fold}/velocity_angular.txt'
+vector_s_rcm_path = f'{data_fold}/vector_s_rcm.txt'
+time_calculate_path = f'{data_fold}/time_calculate.txt'
+time_pub_path = f'{data_fold}/time_pub.txt'
+torque_force_tau_path = f'{data_fold}/torque_force_tau.txt'
+torque_damp_linear_tau_path = f'{data_fold}/torque_force_tau.txt'
 
 
 force_before_filter_list = []
@@ -233,7 +235,7 @@ if __name__ == "__main__":
     time.sleep(0.5)
 
     print(f'======================= start drag ========================')
-    time_start = time.time()
+    time_start = time.perf_counter()
     rate = rospy.Rate(frequency_calculate)
     try:
         count = 0
@@ -264,7 +266,7 @@ if __name__ == "__main__":
                 rokae.stop()
                 print(f'====================\nSensor overload!!!!!\nF_now: {F_now_filtered}\nvelocity:{velocity_linear},{velocity_angular}')
                 if __save_data:
-                    time_calculate_list.append(time.time()-time_start)
+                    time_calculate_list.append(time.perf_counter()-time_start)
                     force_filtered_list.append(np.array(F_now_filtered).squeeze())
                     vector_s_rcm_list.append(np.array([0,0,0]))
                     torque_force_tau_list.append(np.array([0,0,0]))
@@ -406,7 +408,7 @@ if __name__ == "__main__":
 
             #此处每个计算循环存储一次 
             if __save_data:
-                time_calculate_list.append(time.time()-time_start)
+                time_calculate_list.append(time.perf_counter()-time_start)
                 force_filtered_list.append(np.array(F_now_filtered).squeeze())
                 vector_s_rcm_list.append(vector_s_rcm.copy())
                 torque_force_tau_list.append(torque_force_tau.copy())
@@ -439,7 +441,7 @@ if __name__ == "__main__":
 
                 #此处每个发布循环存储一次
                 if __save_data:
-                    time_pub_list.append(time.time()-time_start)
+                    time_pub_list.append(time.perf_counter()-time_start)
                     pose_list.append(np.concatenate((rokae.pose.position.array(),rokae.pose.orientation.array())).squeeze())
                     rcm_error_list.append(np.linalg.norm(rcm_error))
                     # acceleration_linear_list.append()

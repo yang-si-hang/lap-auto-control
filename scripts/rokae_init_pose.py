@@ -7,6 +7,8 @@
 2、开启拖动模式，暂时不支持退出拖动模式（rokae_ros的问题）
 
 另外具有记录选定机械臂关节角的功能(注意修改保存路径)
+
+文件路径仅依赖于 lap_set.data_folder
 '''
 import sys
 import os
@@ -22,7 +24,7 @@ import key_signal
 
 sys.path.append(f"{os.path.dirname(__file__)}/../src/optimal/scripts")
 from lap_set_pk import lap_set
-
+#=======================================================================================================================================
 
 joints_record_path = f"{lap_set.data_folder}/pre_data/joints.txt" #用于保存 机械臂-腹腔镜 标定用的关节角
 lap_end_list_path = f"{lap_set.data_folder}/pre_data/lap_end_positions.txt" # 用于保存{base}下的 腹腔镜末端 位置（根据几何尺寸推算）
