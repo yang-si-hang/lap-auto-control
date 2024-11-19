@@ -2,6 +2,7 @@
 仅由角加速度推算切向加速度
 
 rcm纠偏，以末端z轴作为腹腔镜轴线
+运行过程中有多线程按键检测，检测到 'r' 则进行力传感器 F0 清零,并更新校准文件
 
 文件路径仅依赖于 lap_set.data_folder
 '''
@@ -37,9 +38,12 @@ import key_signal
 
 sys.path.append(f"{os.path.dirname(__file__)}/../../scripts")
 import rokae_basic_fun 
+
+import threading
 #=====================================================================================
 
 __save_data = True
+force_sensor_resetting = False
 
 data_fold = f"{lap_set.data_folder}/drag_data"
 force_before_filter_path = f'{data_fold}/force_before_filter.txt'
@@ -125,13 +129,13 @@ velocity_linear_norm = 0
 velocity_angular_norm = 0
 # velocity_linear_rate = 2
 # velocity_angular_rate = 1
-velocity_linear_limit = 0.1
+velocity_linear_limit = 0.15
 velocity_angular_limit = 10/180*math.pi
 
 
 # 200
-damping_linear = 200
-damping_linear_z = 100
+damping_linear = 150
+damping_linear_z = 80
 # damping_angular = 0.2
 damping_angular_matrix = np.zeros((3,3))
 damping_angular_matrix[0,0] = 0.4
@@ -238,6 +242,27 @@ def weighted_moving_average_filter(_before_data, _weights, _stemp_num):
     return _filtered_data.squeeze()
 
 
+def keyboard_listener():
+    global force_sensor_resetting
+    while True:
+        rlist, _, _ = keyboard_monitor.detect()
+        if rlist:
+            # 读取单个字符并处理
+            input_data = keyboard_monitor.read_char()
+            print("You typed:", input_data)
+            if input_data == 'r':
+                force_sensor_resetting = True
+                time_temp = time.perf_counter()
+                F_sensor.F0_reset(rokae, 2)
+                F_sensor.F0_write()
+                print(f'time duration of force sensor resseting:{time.perf_counter()-time_temp}')
+                force_sensor_resetting = False
+
+
+# 在后台启动一个监听线程
+listener_thread = threading.Thread(target=keyboard_listener)
+listener_thread.daemon = True  # 设置为守护线程，主程序退出时自动停止
+
 
 filter_length = 40 #实时滤波采用的原始数据列表长度
 filter_weights = filter_weight_generate(filter_length, 20, 0)
@@ -261,6 +286,8 @@ if __name__ == "__main__":
     time.sleep(0.5)
     rokae.cv_stop()
     time.sleep(0.5)
+    listener_thread.start()
+
 
     print(f'======================= start drag ========================')
     time_start = time.perf_counter()
@@ -268,6 +295,12 @@ if __name__ == "__main__":
     try:
         count = 0
         while not rospy.is_shutdown():
+            if force_sensor_resetting:
+                rokae.stop()
+                print(f'waiting for force sensor resetting...')
+                time.sleep(0.1)
+                continue
+
             # print('==========================')
             T_0_rob = rokae.pose.T_matrix()
             R_0_rob = T_0_rob[:3,:3]
@@ -434,6 +467,12 @@ if __name__ == "__main__":
             # pub_rcm_error.publish(msg_rcm_error)
 
 
+            # rlist, _, _ = keyboard_monitor.detect()
+            # if rlist:
+            #     # 读取单个字符并处理
+            #     input_data = keyboard_monitor.read_char()
+            #     print("You typed:", input_data)
+
             #此处每个计算循环存储一次 
             if __save_data:
                 # time_calculate_file.write(f'{time.perf_counter()-time_start}\n')
@@ -456,9 +495,10 @@ if __name__ == "__main__":
                     # rob.my_speedl([0,0,0]+velocity_angular.tolist(),0.5,0.2)
                     # rob.my_speedl(velocity_linear.tolist()+velocity_angular.tolist(),0.5,0.2)
                 # 珞石的运动指令
-                rokae.cv_cmd((velocity_linear + rcm_error_velocity).tolist()+velocity_angular.tolist() )
+                rokae.cv_cmd((velocity_linear + rcm_error_velocity).tolist()+velocity_angular.tolist() )  # 六自由度运动
                 # rokae.cv_cmd(np.array([0,0,0,velocity_angular[0],0,0])) #仅绕x轴转动
-                print(  f'速度1:\t{velocity_linear} \t{velocity_angular} ')
+                # print(  f'速度1:\t{velocity_linear} \t{velocity_angular} ')
+                print(f'力:[{force_norm},{torque_norm}]\t速度:{velocity_linear}|{velocity_angular}')
 
                 # --- 用于观测 速度指令（不影响运动，仅用于观测）
                 msg_TwistStamped.header.stamp = rospy.Time.now()

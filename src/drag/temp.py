@@ -133,6 +133,57 @@ for i in range(5):
     time.sleep(0.001)
 
 
-while True:
-    print(time.perf_counter()*1000)
-    time.sleep(0.001)
+# while True:
+#     print(time.perf_counter()*1000)
+#     time.sleep(0.001)
+
+import sys
+import rospy
+sys.path.append("/home/irobotcare/wyh/laparoscope_ws/src/optimal/scripts")
+from lap_set_pk import lap_set
+
+sys.path.append("/home/irobotcare/wyh/laparoscope_ws/src")
+import drag.force_sensor_receiver as force_sensor_receiver
+
+sys.path.append(f"{os.path.dirname(__file__)}/../../scripts")
+import rokae_basic_fun 
+
+rospy.init_node('drag_temp', anonymous=True)
+
+F_sensor = force_sensor_receiver.force_sensor_receiver_class()
+rokae = rokae_basic_fun.rokae()
+R_rob_sensor = lap_set.T_rob_sensor[:3,:3]
+
+for i in range(20):
+    force = F_sensor.pure_force_now(rokae.pose.R_matrix() @ R_rob_sensor)
+
+    print(f'force befor reset F0: [{np.linalg.norm(force[:3])}, {np.linalg.norm(force[3:])}]\t{force}')
+    time.sleep(0.01)
+
+F_sensor.F0_reset(rokae,2)
+print(f'F0 reset')
+F_sensor.F0_write()
+print(f'F0 writed')
+
+try:
+    for i in range(10):
+        force = F_sensor.pure_force_now(rokae.pose.R_matrix() @ R_rob_sensor)
+        print(f'force after reset F0: [{np.linalg.norm(force[:3])}, {np.linalg.norm(force[3:])}]\t{force}')
+        time.sleep(0.5)
+    
+    print(f'sleep for 5 s')
+    time.sleep(5)
+    F_sensor.reload_GLF()
+
+    for i in range(10):
+        force = F_sensor.pure_force_now(rokae.pose.R_matrix() @ R_rob_sensor)
+        print(f'force after reset F0: [{np.linalg.norm(force[:3])}, {np.linalg.norm(force[3:])}]\t{force}')
+        time.sleep(0.5)
+    
+    
+
+
+except KeyboardInterrupt:
+    exit()
+    pass
+

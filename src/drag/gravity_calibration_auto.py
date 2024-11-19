@@ -1,4 +1,5 @@
 '''
+
 注意：
     1、正确设置 lap_set.T_rob_sensor
     2、建议运行 rokae_init_pose 
@@ -42,6 +43,7 @@ import rokae_basic_fun
 
 #==============================================================================================
 
+joint_velocity = 25.0/180.0*math.pi
 np.set_printoptions(precision=6, suppress=True)
 
 
@@ -94,7 +96,7 @@ def gravity_compensation(force_file_path, sensor_pose_file_path, G_L_F0_file_pat
     aa = A @ force
     
     print(f'aa:{aa}')
-    G = np.linalg.norm(aa[:3,0].squeeze())
+    G = np.array(aa[:3,0]).squeeze()
 
     force_0 = aa[3:6,0]   #x\y\z
 
@@ -113,7 +115,7 @@ def gravity_compensation(force_file_path, sensor_pose_file_path, G_L_F0_file_pat
     L = [Lx,Ly,Lz]
     print(f'L norm:{np.linalg.norm(np.array(L))}')
     F0 = [force_0[0], force_0[1], force_0[2],mx0,my0,mz0]
-    G_L_F0 = np.array([G]+ L + F0).squeeze()
+    G_L_F0 = np.array(G.tolist()+ L + F0).squeeze()
     np.savetxt(G_L_F0_file_path, G_L_F0, delimiter=',')
     return G, L, F0
 
@@ -144,7 +146,7 @@ def move_and_save_data(num_data_point, force_file_path, sensor_pose_file_path, _
             joints[5] = random.uniform(-110.0/180.0*math.pi, 110.0/180.0*math.pi)
             joints[6] = random.uniform(-math.pi, math.pi)
             print(f'目标关节角：\n{np.array(joints)/math.pi*180}')
-            _rokae.jp_cmd(joints)
+            _rokae.jp_cmd(joints, velocity=joint_velocity)
             time.sleep(0.5)
             print(f'point {i} 已到达，开始测量...')
             T_0_rob = _rokae.pose.T_matrix()
@@ -201,9 +203,10 @@ if __name__ == '__main__':
                     input_data = keyboard_monitor.read_char()
                     if input_data == '1':
                         choice = 1
-                        rokae.jp_cmd(np.array([0,     34.276,     0,      48.969,     5.435,      48.827,     81.927])* (np.pi/180)) #
+                        print('运动至初始位置')
+                        rokae.jp_cmd(np.array([0,     34.276,     0,      48.969,     5.435,      48.827,     81.927])* (np.pi/180), velocity=joint_velocity) #
                         # 运动采点，并保存数据
-                        move_and_save_data(20, F_file, pose_file, rokae, F_sensor)
+                        move_and_save_data(10, F_file, pose_file, rokae, F_sensor)
                         #根据数据点文件来进行计算
                         G, L, F0 = gravity_compensation(F_file, pose_file, G_L_F0_file)
                         print(f'G:\n{G}')
@@ -229,9 +232,10 @@ if __name__ == '__main__':
                     f'G:\t{F_sensor.G}\n'\
                     f'L:\t{F_sensor.M_center}\n'\
                     f'F0:\t{F_sensor.F0}\n'\
-                    f'传感器数值: {F_now}\n'\
+                    f'传感器数值: {F_all_now}\n'\
                     f'外力: {F_now}\n'\
                     f'force: {np.linalg.norm(F_now[:3])}\ntorque: {np.linalg.norm(F_now[3:])}')
+            time.sleep(0.1) # 粗略延时
             if choice == 2:
                 wrench_stamped_msg.header = Header(stamp=rospy.Time.now())
                 wrench_stamped_msg.wrench.force.x = F_now[0]
@@ -243,6 +247,7 @@ if __name__ == '__main__':
                 wrench_stamped_msg.wrench.torque.z = F_now[5]
 
                 F_now_pub.publish(wrench_stamped_msg)
+
 
      # 程序中断处理        
     except KeyboardInterrupt:

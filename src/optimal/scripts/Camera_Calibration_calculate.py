@@ -8,8 +8,8 @@ https://www.cnblogs.com/wenbozhu/p/10697374.html
 A2^{-1}*A1*X=X*B2*B1^{−1}
 
 
-运算结果临时保存在 ../data/Camera_Calibration/mtx_temp.csv 和 camera_tool_temp.csv
-如果确认使用计算结果，请copy到 ../data/Camera_Calibration/camera_tool.csv （相对末端的坐标）和 mtx.csv （内参）
+运算结果临时保存在 Camera_Calibration_folder/mtx_temp.csv 和 camera_tool_temp.csv
+如果确认使用计算结果，请copy到 Camera_Calibration_folder/camera_tool.csv （相对末端的坐标）和 mtx.csv （内参）
 """
 
 
@@ -24,9 +24,16 @@ import h5py
 import numpy as np
 np.set_printoptions(precision=8,suppress=True)
 import glob
+import sys
 
-path = os.path.dirname(__file__)
-tool_pos_path = f'{os.path.dirname(__file__)}/../data/Camera_Calibration/RobotPose.csv'
+sys.path.append(f"{os.path.dirname(__file__)}")
+from lap_set_pk import lap_set
+#==================================================================================================================
+
+
+
+Camera_Calibration_folder = f'{lap_set.data_folder}/Camera_Calibration'
+tool_pos_path = f'{Camera_Calibration_folder}/RobotPose.csv'
 
 # 角点的个数以及棋盘格间距 =================================================
 # 大标定板----------------------------------------
@@ -54,7 +61,7 @@ objp = L*objp
 obj_points = []     # 存储3D点
 img_points = []     # 存储2D点
 
-images = glob.glob(f'{os.path.dirname(__file__)}/../data/Camera_Calibration/imgs/*.png')
+images = glob.glob(f'{Camera_Calibration_folder}/imgs/*.png')
 images = sorted(images)  #按照文件名排序，数字的位数不同会乱，可以使用 str（int）.zfill（3）将整数前补0化为固定位数 001
 print(f'图片路径：{images[0]}\n图片数量：{len(images)}')
 
@@ -91,7 +98,7 @@ for fname in images:
 
         cv2.drawChessboardCorners(img, (XX, YY), corners, ret)
         # 红色为第一行点，蓝色为最后一行点，数点先X轴再Y轴，一行有XX个点
-        cv2.imwrite(f'{os.path.dirname(__file__)}/../data/Camera_Calibration/figure_save/{i}.jpg', img)
+        cv2.imwrite(f'{Camera_Calibration_folder}/figure_save/{i}.jpg', img)
         i = i+1
         # cv2.imshow('img', img)
         # cv2.waitKey(2000)
@@ -120,7 +127,7 @@ for fname in images:
     # newcameramtx, roi=cv2.getOptimalNewCameraMatrix(mtx,dist,(w,h),0,(w,h)) # 自由比例参数
     # dst = cv2.undistort(figure, mtx, dist, None, newcameramtx)
     dst = cv2.undistort(figure, mtx, dist, None, mtx)
-    cv2.imwrite(f'{os.path.dirname(__file__)}/../data/Camera_Calibration/figure_undist/{i}.jpg', dst)
+    cv2.imwrite(f'{Camera_Calibration_folder}/figure_undist/{i}.jpg', dst)
     i = i + 1
 
 # 计算图案在相机坐标系的位姿
@@ -142,7 +149,7 @@ for i in range(N-1):
     T_save[:, 4 * i:4 * (i + 1)] = T[i] @ np.linalg.inv(T[i + 1])
     # print(np.linalg.inv(T[i]) @ T[i+1])
 
-np.savetxt(f'{os.path.dirname(__file__)}/../data/Camera_Calibration/temp/M2.csv', T_save)
+np.savetxt(f'{Camera_Calibration_folder}/temp_result/M2.csv', T_save)
 
 # 机器人末端在基座标系下的位姿
 # tool_pose = np.loadtxt(f'{os.path.dirname(__file__)}/../data/Camera_Calibration/RobotPose.csv')
@@ -156,7 +163,7 @@ for line in lines:
     list=line.strip('\n').split(',')
     tool_pose[tool_pose_row:]=list[0:4]
     tool_pose_row += 1
-print(tool_pose)
+# print(tool_pose)
 
 
 # N = tool_pose.shape[1]/4
@@ -173,6 +180,6 @@ T_tool_camera = np.hstack((R, t))
 T_tool_camera = np.vstack((T_tool_camera, np.array([0,0,0,1])))
 print(f'相机在机器人末端坐标系的位姿：\n{T_tool_camera}')
 
-np.savetxt(f'{os.path.dirname(__file__)}/../data/Camera_Calibration/temp/mtx.csv', mtx)
-np.savetxt(f'{os.path.dirname(__file__)}/../data/Camera_Calibration/temp/dist.csv', dist)
-np.savetxt(f'{os.path.dirname(__file__)}/../data/Camera_Calibration/temp/camera_tool.csv', T_tool_camera)
+np.savetxt(f'{Camera_Calibration_folder}/temp_result/mtx.csv', mtx)
+np.savetxt(f'{Camera_Calibration_folder}/temp_result/dist.csv', dist)
+np.savetxt(f'{Camera_Calibration_folder}/temp_result/camera_tool.csv', T_tool_camera)

@@ -579,6 +579,13 @@ void ROKAE_ROS::start_control()
         else if (control_mode == ros_control_mode::cv)
         {
             rtCon_->startMove(RtControllerMode::cartesianPosition);
+
+            rtCon_->updateRobotState();
+            rtCon_->getStateData(RtSupportedFields::tcpPose_m, tcpPose);
+            Eigen::Matrix3d tcp_R = array2rotation(tcpPose);
+            tcpPosition0<<tcpPose[3],tcpPose[7],tcpPose[11];
+            tcpRotation0=tcp_R;
+
             std::function<CartesianPosition()> callback = std::bind(&ROKAE_ROS::move_twist_callback, this);
             rtCon_->setControlLoop(callback);
 

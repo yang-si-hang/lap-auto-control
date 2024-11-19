@@ -167,7 +167,6 @@ include_directories(
 catkin_install_python(PROGRAMS
   drag_mode_rcm.py
   force_sensor_publisher_Medusa.py
-  force_sensor_publisher.py
   gravity_calibration_auto.py
   ../../scripts/rokae_init_pose.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

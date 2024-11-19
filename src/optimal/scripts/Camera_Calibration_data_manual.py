@@ -1,6 +1,7 @@
 '''
 记得提前将存储位置老文件清空（不需要清空了，变换矩阵直接覆盖了）
-要清空： ../data/Camera_Calibration/imgs/  （如果图片数量一样会直接覆盖，原有多的不会覆盖） 
+要清空： img_folder （如果图片数量一样会直接覆盖，原有多的不会覆盖） 
+文件路径完全依赖 lap_set
 
 不进行运算，运算在
 ./Camera_Calibration_calculate.py
@@ -27,6 +28,7 @@ from lap_set_pk import lap_set
 
 sys.path.append(f"{os.path.dirname(__file__)}/../../../scripts")
 import rokae_basic_fun 
+#=========================================================================================================================
 
 Capturing = 0
 Capture_stop = 0
@@ -83,10 +85,9 @@ if __name__ == '__main__':
 
 
 
-    img_path = f'{os.path.dirname(__file__)}/../data/Camera_Calibration/imgs/'
-    joints_path = f'{os.path.dirname(__file__)}/../data/Camera_Calibration/joints/'
-    joints_file = f'{joints_path}rokae_test.txt'
-    T_path = f'{os.path.dirname(__file__)}/../data/Camera_Calibration/RobotPose.csv'
+    img_folder = f'{lap_set.data_folder}/Camera_Calibration/imgs'
+    joints_file = f'{lap_set.data_folder}/Camera_Calibration/rokae_test.txt'
+    RobotPose_path = f'{lap_set.data_folder}/Camera_Calibration/RobotPose.csv'
 
     file = open(joints_file, 'a')
     file.truncate(0)
@@ -96,7 +97,7 @@ if __name__ == '__main__':
     time.sleep(0.2)
 
 
-    Note=open(T_path,mode='a')
+    Note=open(RobotPose_path,mode='a')
     Note.truncate(0)
 
 
@@ -150,7 +151,7 @@ if __name__ == '__main__':
                 if lap_set.rgb2bgr:
                     frame = frame[:, :, [2, 1, 0]]
 
-                cv.imwrite(img_path+str(step_i).zfill(4)+'.png', frame)
+                cv.imwrite(f'{img_folder}/{str(step_i).zfill(4)}.png', frame)
                 Capturing = 0
                 print('Capture finish i:',step_i)
                 step_i += 1
@@ -182,7 +183,7 @@ if __name__ == '__main__':
 
 #===================================  读取矩阵txt  ============================================
     # A=np.zeros((4*N+4,4),dtype=float) #先创建全零矩阵A,并将数据设置为float类型
-    # f=open(T_path)
+    # f=open(RobotPose_path)
     # lines=f.readlines() #将全部数据读到一个lines中
     # A_row=0         #表示矩阵的行，从0开始
     # for line in lines:

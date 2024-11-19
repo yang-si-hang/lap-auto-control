@@ -1,6 +1,8 @@
 '''
 用于测试相机标定结果（眼在手上）
 需要使用棋盘格
+路径仅依赖于lap_set
+是否对原本的变换坐标进行修正：T_rob_cam_adjust_flag
 '''
 
 import os.path
@@ -19,10 +21,9 @@ from scipy.spatial.transform import Rotation as R
 
 sys.path.append(f"{os.path.dirname(__file__)}")
 from lap_set_pk import lap_set
+#===================================================================================================
 
-sys.path.append(f"{os.path.dirname(__file__)}/../../../scripts")
-import rokae_basic_fun 
-
+T_rob_cam_adjust_flag = True
 joints = np.array(
     [
         [],
@@ -47,7 +48,7 @@ for i in range(YY):
 # print(board_corner_matrix)
 # =======================================================================
 
-folder = f'{os.path.dirname(__file__)}/../data/Camera_Calibration/temp'
+folder = f'{lap_set.data_folder}/Camera_Calibration'
 mtx_path = f'{folder}/mtx.csv' #内参矩阵
 dist_path=f'{folder}/dist.csv'
 camera_tool_path = f'{folder}/camera_tool.csv'
@@ -65,12 +66,16 @@ T_0_rob_catted = np.array(T_0_rob_catted).astype(float)
 mtx = np.loadtxt(mtx_path) #内参矩阵
 
 temp_matrix = np.loadtxt(camera_tool_path) #相机相对于机械臂末端的变换矩阵
+if T_rob_cam_adjust_flag:
 # 定义绕 z 轴旋转 90 度
-rotation_matrix = R.from_euler('z', -90, degrees=True).as_matrix()
-print(f'rotation matrix :\n{rotation_matrix}')
-transformation_matrix = np.eye(4)
-transformation_matrix[:3, :3] = rotation_matrix
-T_rob_cam = transformation_matrix @ temp_matrix
+    rotation_matrix = R.from_euler('z', -90, degrees=True).as_matrix()
+    print(f'rotation matrix :\n{rotation_matrix}')
+    transformation_matrix = np.eye(4)
+    transformation_matrix[:3, :3] = rotation_matrix
+    T_rob_cam = transformation_matrix @ temp_matrix
+else:
+    T_rob_cam = temp_matrix
+
 # T_rob_cam = np.eye(4)
 # T_rob_cam[:3,0] = -temp_matrix[:3,1]
 # T_rob_cam[:3,1] = temp_matrix[:3,0]
@@ -83,7 +88,7 @@ cx = mtx[0,2]
 cy = mtx[1,2]
 
 
-images = glob.glob(f'{os.path.dirname(__file__)}/../data/Camera_Calibration/imgs/*.png')
+images = glob.glob(f'{lap_set.data_folder}/Camera_Calibration/imgs/*.png')
 images_path = sorted(images)  #按照文件名排序，数字的位数不同会乱，可以使用 str（int）.zfill（3）将整数前补0化为固定位数 001
 print(f'图片路径：{images_path[0]}\n图片数量：{len(images_path)}')
 print(f'T_0_rob 个数:{int(len(T_0_rob_catted)/4)}')
@@ -296,8 +301,8 @@ if __name__=="__main__":
                 temp_tuple = img_corner_matrix[row,vol].astype(int)
                 # print(temp_tuple)
                 cv2.circle(img, temp_tuple, radius=3, color=(0,0,255), thickness=-1)
-        flag = cv2.imwrite(f'{os.path.dirname(__file__)}/../data/Camera_Calibration/figure_test/{i}.png', img)
-        print(flag)
+        flag = cv2.imwrite(f'{lap_set.data_folder}/Camera_Calibration/figure_check/{i}.png', img)
+        print(f'figure_check {i} saved: {flag}')
 
 
 

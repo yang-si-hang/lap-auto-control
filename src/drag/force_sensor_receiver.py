@@ -12,7 +12,7 @@ from geometry_msgs.msg import WrenchStamped
 import sys
 sys.path.append("/home/irobotcare/wyh/laparoscope_ws/src/optimal/scripts")
 from lap_set_pk import lap_set
-
+import threading
 # from RcmControl import GetSpeed, MotionControl
 #=======================================================================================================
 
@@ -35,6 +35,8 @@ class force_sensor_receiver_class(object):
         self.R_rob_sensor = lap_set.T_rob_sensor[:3,:3]
 
         rospy.Subscriber('/Bota_force_sensor/wrenchstamped',WrenchStamped,  self.force_sensor_callback)
+
+        self.lock = threading.Lock()
         
         pass
 
@@ -78,38 +80,44 @@ class force_sensor_receiver_class(object):
             duration_time (秒)
             pure_force_in_theory (6维向量): 理论外力(通常默认为0向量)
         """
-        F0_error_list = []
-        F0_error = np.zeros(6)
-        loop_time = 0.005
-        for i in range(int(duration_time/loop_time)):
-            R_0_sensor = rokae.pose.R_matrix() @ self.R_rob_sensor
-            force = self.pure_force_now(R_0_sensor)
-            force_error = force - pure_force_in_theory
-            F0_error[:3] = R_0_sensor.T @ force_error[:3]
-            F0_error[3:] = R_0_sensor.T @ force_error[3:]
-            F0_error_list.append(F0_error.copy())
-        
-        F0_error = np.mean(np.array(F0_error_list), axis=0)
-        F0_new = F0_error + np.array(self.F0)
-        self.F0 = F0_new.tolist()
-        print(f'F0 reset: {self.F0}')
+        with self.lock:
+            F0_error_list = []
+            F0_error = np.zeros(6)
+            loop_time = 0.005
+            steps = int(duration_time/loop_time)
+            print(f'F0_reset steps:{steps}')
+            for i in range(steps):
+                R_0_sensor = rokae.pose.R_matrix() @ self.R_rob_sensor
+                force = self.pure_force_now(R_0_sensor)
+                force_error = force - pure_force_in_theory
+                F0_error[:3] = R_0_sensor.T @ force_error[:3]
+                F0_error[3:] = R_0_sensor.T @ force_error[3:]
+                F0_error_list.append(F0_error.copy())
+            
+            F0_error = np.mean(np.array(F0_error_list), axis=0)
+            F0_new = F0_error + np.array(self.F0)
+            self.F0 = F0_new.tolist()
+            time.sleep(loop_time)
+            print(f'F0 reset: {self.F0}')
     
     def F0_write(self):
         """
             将目前的 self.F0 写入标定文件，通常搭配 F0_reset 使用
         """
-        array = np.loadtxt(f'{self.folder}/G_L_F0.txt',delimiter=',')
-        array[6:] = np.array(self.F0).squeeze()
-        np.savetxt(f'{self.folder}/G_L_F0.txt',array,delimiter=',')
-        print(f'F0_writed: {self.folder}/G_L_F0.txt')
+        with self.lock:
+            array = np.loadtxt(f'{self.folder}/G_L_F0.txt',delimiter=',')
+            array[6:] = np.array(self.F0).squeeze()
+            np.savetxt(f'{self.folder}/G_L_F0.txt',array,delimiter=',')
+            print(f'F0_writed: {self.folder}/G_L_F0.txt')
 
     def reload_GLF(self):
-        temp_array = np.loadtxt(f'{self.folder}/G_L_F0.txt',delimiter=',').squeeze()
-        if len(temp_array) != 12:
-             raise ValueError("G_L_F0.txt 不合规(应有G、L、F0 3+3+6=12 个元素)")
-        self.G = temp_array[0:3]
-        self.M_center=temp_array[3:6].tolist()
-        self.F0 = temp_array[6:].tolist()
+        with self.lock:
+            temp_array = np.loadtxt(f'{self.folder}/G_L_F0.txt',delimiter=',').squeeze()
+            if len(temp_array) != 12:
+                raise ValueError("G_L_F0.txt 不合规(应有G、L、F0 3+3+6=12 个元素)")
+            self.G = temp_array[0:3]
+            self.M_center=temp_array[3:6].tolist()
+            self.F0 = temp_array[6:].tolist()
 
 
 

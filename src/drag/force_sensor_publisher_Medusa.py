@@ -70,7 +70,7 @@ class BotaSerialSensor:
 
     BOTA_PRODUCT_CODE = 123456
     BAUDERATE = 460800
-    SINC_LENGTH = 64
+    SINC_LENGTH = 57
     CHOP_ENABLE = 0
     FAST_ENABLE = 0
     FIR_DISABLE = 0
