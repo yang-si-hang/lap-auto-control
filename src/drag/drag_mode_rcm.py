@@ -56,6 +56,34 @@ time_pub_path = f'{data_fold}/time_pub.txt'
 torque_force_tau_path = f'{data_fold}/torque_force_tau.txt'
 torque_damp_linear_tau_path = f'{data_fold}/torque_force_tau.txt'
 
+'''
+force_before_filter_file = open(force_before_filter_path, 'a')
+force_before_filter_file.truncate(0)
+force_filtered_file = open(force_filtered_path, 'a')
+force_filtered_file.truncate(0)
+pose_file = open(pose_path, 'a')
+pose_file.truncate(0)
+rcm_error_file = open(rcm_error_path, 'a')
+rcm_error_file.truncate(0)
+acceleration_linear_file = open(acceleration_linear_path, 'a')
+acceleration_linear_file.truncate(0)
+acceleration_angular_file = open(acceleration_angular_path, 'a')
+acceleration_angular_file.truncate(0)
+velocity_linear_file = open(velocity_linear_path, 'a')
+velocity_linear_file.truncate(0)
+velocity_angular_file = open(velocity_angular_path, 'a')
+velocity_angular_file.truncate(0)
+vector_s_rcm_file = open(vector_s_rcm_path, 'a')
+vector_s_rcm_file.truncate(0)
+time_calculate_file = open(time_calculate_path, 'a')
+time_calculate_file.truncate(0)
+time_pub_file = open(time_pub_path, 'a')
+time_pub_file.truncate(0)
+torque_force_tau_file = open(torque_force_tau_path, 'a')
+torque_force_tau_file.truncate(0)
+torque_damp_linear_tau_file = open(torque_damp_linear_tau_path, 'a')
+torque_damp_linear_tau_file.truncate(0)
+'''
 
 force_before_filter_list = []
 force_filtered_list = []
@@ -408,6 +436,9 @@ if __name__ == "__main__":
 
             #此处每个计算循环存储一次 
             if __save_data:
+                # time_calculate_file.write(f'{time.perf_counter()-time_start}\n')
+                # force_filtered_file.write()
+
                 time_calculate_list.append(time.perf_counter()-time_start)
                 force_filtered_list.append(np.array(F_now_filtered).squeeze())
                 vector_s_rcm_list.append(vector_s_rcm.copy())
@@ -425,8 +456,8 @@ if __name__ == "__main__":
                     # rob.my_speedl([0,0,0]+velocity_angular.tolist(),0.5,0.2)
                     # rob.my_speedl(velocity_linear.tolist()+velocity_angular.tolist(),0.5,0.2)
                 # 珞石的运动指令
-                # rokae.cv_cmd((velocity_linear + rcm_error_velocity).tolist()+velocity_angular.tolist() )
-                rokae.cv_cmd(np.array([0,0,0,velocity_angular[0],0,0])) #仅绕x轴转动
+                rokae.cv_cmd((velocity_linear + rcm_error_velocity).tolist()+velocity_angular.tolist() )
+                # rokae.cv_cmd(np.array([0,0,0,velocity_angular[0],0,0])) #仅绕x轴转动
                 print(  f'速度1:\t{velocity_linear} \t{velocity_angular} ')
 
                 # --- 用于观测 速度指令（不影响运动，仅用于观测）
