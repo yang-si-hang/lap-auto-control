@@ -56,6 +56,7 @@ class force_sensor_receiver_class(object):
     
     def pure_force_now(self, R_0_sensor):
         '''
+        根据 R_0_sensor 计算 {0} 下的纯外力值(剔除力传感器上把手的重力和重力矩)
         return: 6素素的np.array
         '''
         return self.pure_force_compute(self.force + self.torque, R_0_sensor)
