@@ -28,9 +28,9 @@ class force_sensor_receiver_class(object):
         temp_array = np.loadtxt(f'{self.folder}/G_L_F0.txt',delimiter=',').squeeze()
         if len(temp_array) != 12:
              raise ValueError("G_L_F0.txt 不合规(应有G、L、F0 3+3+6=12 个元素)")
-        self.G = temp_array[0:3]
-        self.M_center=temp_array[3:6].tolist()
-        self.F0 = temp_array[6:].tolist()
+        self.G = temp_array[0:3] #{0} 下力传感器把手重力
+        self.M_center=temp_array[3:6].tolist() #力传感器上把手在力传感器坐标系下的中心位置
+        self.F0 = temp_array[6:].tolist() #传感器0偏
 
         self.R_rob_sensor = lap_set.T_rob_sensor[:3,:3]
 
