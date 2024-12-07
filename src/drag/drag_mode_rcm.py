@@ -327,7 +327,7 @@ if __name__ == "__main__":
                 rokae.stop()
                 print(f'====================\nSensor overload!!!!!\nF_now: {F_now_filtered}\nvelocity:{velocity_linear},{velocity_angular}')
                 if __save_data:
-                    time_calculate_list.append(time.perf_counter()-time_start)
+                    time_calculate_list.append(time.perf_counter())
                     force_filtered_list.append(np.array(F_now_filtered).squeeze())
                     vector_s_rcm_list.append(np.array([0,0,0]))
                     torque_force_tau_list.append(np.array([0,0,0]))
@@ -475,10 +475,10 @@ if __name__ == "__main__":
 
             #此处每个计算循环存储一次 
             if __save_data:
-                # time_calculate_file.write(f'{time.perf_counter()-time_start}\n')
+                # time_calculate_file.write(f'{time.perf_counter()}\n')
                 # force_filtered_file.write()
 
-                time_calculate_list.append(time.perf_counter()-time_start)
+                time_calculate_list.append(time.perf_counter())
                 force_filtered_list.append(np.array(F_now_filtered).squeeze())
                 vector_s_rcm_list.append(vector_s_rcm.copy())
                 torque_force_tau_list.append(torque_force_tau.copy())
@@ -512,7 +512,7 @@ if __name__ == "__main__":
 
                 #此处每个发布循环存储一次
                 if __save_data:
-                    time_pub_list.append(time.perf_counter()-time_start)
+                    time_pub_list.append(time.perf_counter())
                     pose_list.append(np.concatenate((rokae.pose.position.array(),rokae.pose.orientation.array())).squeeze())
                     rcm_error_list.append(np.linalg.norm(rcm_error))
                     # acceleration_linear_list.append()
@@ -537,6 +537,7 @@ if __name__ == "__main__":
         rokae.stop()
 
         if __save_data:
+            print('正在保存数据......')
             # 计算循环中的数据
             np.savetxt(time_calculate_path, np.array(time_calculate_list), delimiter=',')
             np.savetxt(force_before_filter_path, np.array(force_before_filter_list), delimiter=',')
@@ -552,13 +553,15 @@ if __name__ == "__main__":
             np.savetxt(velocity_angular_path, np.array(velocity_angular_list), delimiter=',')
             np.savetxt(velocity_linear_path, np.array(velocity_linear_list), delimiter=',')
             print(f'数据保存完毕')
-            print(f'开始计算最大力、速度...')
-            force_filtered = np.array(force_filtered_list)
-            force = force_filtered[:,:3]
-            torque = force_filtered[:,3:6]
-            print(f'最大力: {max_norm(force,1)}')
-            print(f'最大力矩: {max_norm(torque,1)}')
-            print(f'最大线速度: {max_norm(np.array(velocity_linear_list),1)}')
-            print(f'最大角速度: {max_norm(np.array(velocity_angular_list),1)}')
+            user_input = input("需要计算最大力、速度请输入'1':")
+            if user_input == '1':
+                print(f'开始计算最大力、速度...')
+                force_filtered = np.array(force_filtered_list)
+                force = force_filtered[:,:3]
+                torque = force_filtered[:,3:6]
+                print(f'最大力: {max_norm(force,1)}')
+                print(f'最大力矩: {max_norm(torque,1)}')
+                print(f'最大线速度: {max_norm(np.array(velocity_linear_list),1)}')
+                print(f'最大角速度: {max_norm(np.array(velocity_angular_list),1)}')
 
 

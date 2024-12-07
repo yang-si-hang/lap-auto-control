@@ -65,7 +65,7 @@ T_rob_tool = np.array([     [-1.0 , 0.0 ,   0.0 ,   -0.0],
 rob_needle_end_vector = np.array([0, 0, 0.2])
 
 # 腹腔镜末端到机械臂末端法兰尺寸
-rob_lap_end_vector = np.array([0, 0, 0.3])
+rob_lap_end_vector = np.array([0, 0, 0.52])
 
 
 #2023.09.18 ur5 左臂第一版参数

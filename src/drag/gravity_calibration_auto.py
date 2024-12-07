@@ -42,6 +42,7 @@ sys.path.append(f"{os.path.dirname(__file__)}/../../scripts")
 import rokae_basic_fun 
 
 #==============================================================================================
+random_steps = 6
 
 joint_velocity = 25.0/180.0*math.pi
 np.set_printoptions(precision=6, suppress=True)
@@ -206,7 +207,7 @@ if __name__ == '__main__':
                         print('运动至初始位置')
                         rokae.jp_cmd(np.array([0,     34.276,     0,      48.969,     5.435,      48.827,     81.927])* (np.pi/180), velocity=joint_velocity) #
                         # 运动采点，并保存数据
-                        move_and_save_data(10, F_file, pose_file, rokae, F_sensor)
+                        move_and_save_data(random_steps, F_file, pose_file, rokae, F_sensor)
                         #根据数据点文件来进行计算
                         G, L, F0 = gravity_compensation(F_file, pose_file, G_L_F0_file)
                         print(f'G:\n{G}')

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.2)
-project(optimal)
+project(qualisys)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
@@ -70,7 +70,7 @@ find_package(catkin REQUIRED COMPONENTS
 ## Generate added messages and services with any dependencies listed here
 # generate_messages(
 #   DEPENDENCIES
-#   std_msgs
+#   std_msgs  # Or other packages containing msgs
 # )
 
 ################################################
@@ -93,6 +93,10 @@ find_package(catkin REQUIRED COMPONENTS
 #   cfg/DynReconf2.cfg
 # )
 
+find_package( Eigen3 REQUIRED )
+find_package( Threads REQUIRED )
+include_directories(${EIGEN3_INCLUDE_DIRS})
+
 ###################################
 ## catkin specific configuration ##
 ###################################
@@ -104,8 +108,8 @@ find_package(catkin REQUIRED COMPONENTS
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
 #  INCLUDE_DIRS include
-#  LIBRARIES optimal
-#  CATKIN_DEPENDS roscpp rospy std_msgs
+#  LIBRARIES my_haption_pkg
+ CATKIN_DEPENDS roscpp rospy std_msgs
 #  DEPENDS system_lib
 )
 
@@ -122,7 +126,7 @@ include_directories(
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
-#   src/${PROJECT_NAME}/optimal.cpp
+#   src/${PROJECT_NAME}/my_haption_pkg.cpp
 # )
 
 ## Add cmake target dependencies of the library
@@ -133,7 +137,7 @@ include_directories(
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-# add_executable(${PROJECT_NAME}_node src/optimal_node.cpp)
+# add_executable(${PROJECT_NAME}_node src/my_haption_pkg_node.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -160,13 +164,9 @@ include_directories(
 ## Mark executable scripts (Python etc.) for installation
 ## in contrast to setup.py, you can choose the destination
 catkin_install_python(PROGRAMS
-  scripts/inst_pos_imu_yolo.py
-  scripts/imu_init.py
-  scripts/domain_knowledge_optimal_pg.py
-  scripts/MarkerTwoPose.py
-  scripts/RobotMove.py
-  scripts/RobotPose.py
-  scripts/Camera_Calibration_data_manual.py
+  scripts/rigid_end_init.py
+  scripts/rigid_end_record.py
+  scripts/Qualisys_Rob_Calibration.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
@@ -203,10 +203,29 @@ catkin_install_python(PROGRAMS
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_optimal.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_my_haption_pkg.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()
 
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
+
+
+link_directories(lib)
+
+# add_executable(haption_hold_on src/haption_hold_on.cpp)
+# add_dependencies(haption_hold_on virtuose_generate_messages_cpp)
+
+# target_link_libraries(haption_hold_on
+#    ${catkin_LIBRARIES}
+# )
+# install(TARGETS haption_hold_on RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
+
+
+# add_executable(hps_force_sensor_pub src/hps_force_sensor_pub.cpp)
+# target_link_libraries(hps_force_sensor_pub ${catkin_LIBRARIES} libhps_ft.so libhps_ft.so.1 libhps_ft.so.1.0.0 ${CMAKE_THREAD_LIBS_INIT})
+
+
+# add_executable(my_haption_node_oneThread src/my_haption_node_oneThread.cpp)
+# target_link_libraries(my_haption_node_oneThread ${catkin_LIBRARIES} libvirtuose.a virtuoseAPI dl)
