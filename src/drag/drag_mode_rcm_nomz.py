@@ -1,4 +1,6 @@
 '''
+和 drag_mode_rcm_nomz.py 的不同: # 消除把手偏置力矩
+
 仅由角加速度推算切向加速度
 
 rcm纠偏，以末端z轴作为腹腔镜轴线
@@ -321,6 +323,10 @@ if __name__ == "__main__":
 
             force = F_now_filtered[:3]
             torque = F_now_filtered[3:]
+
+            # 消除把手偏置力矩
+            l_0_vector = R_0_sensor @ np.array(F_sensor.M_center) #力传感器到把手中心的向量在{0}下的表达
+            torque = torque - np.cross(l_0_vector,force)*0.6
 
             # 检验是否超过传感器安全范围
             if abs(force[0])>sensor_safe_force or abs(force[1])>sensor_safe_force or abs(force[2])>sensor_safe_force or abs(torque[0])>sensor_safe_torque or abs(torque[1])>sensor_safe_torque or abs(torque[2])>sensor_safe_torque:
