@@ -1,6 +1,10 @@
 """
     Streaming 6Dof from QTM
     文件路径、ip、密码 在lap_set中修改
+
+    会在以下位置保存
+    # np.savetxt(f'{lap_set.coordinate_set_folder}/camera_rcm_pose.csv',rcm_pose,delimiter=',')
+    # np.savetxt(f'{lap_set.coordinate_set_folder}/qualisys_rcm.txt', qualisys_rcm, delimiter=',')
 """
 
 import asyncio
@@ -26,15 +30,30 @@ import os
 sys.path.append(f"{os.path.dirname(__file__)}/../../optimal/scripts")
 from lap_set_pk import lap_set
 #================================================================================
+lap_rigid = lap_set.rigid_names['rcm_calculate']
+assert lap_rigid is not None, '刚体名未正常设置'
+
+
+fold_path = f'{lap_set.data_folder}/Qualisys_calibration'
+T_rob_rigid_path = f'{fold_path}/T_rob_rigid.txt'
+T_0_qualisys_path = f'{fold_path}/T_0_cam.txt'
+
+
+T_rob_rigid = np.loadtxt(T_rob_rigid_path,delimiter=',')
+T_0_qualisys = np.loadtxt(T_0_qualisys_path,delimiter=',')
+assert T_rob_rigid is not None, f"未能读取 T_rob_rigid : {T_rob_rigid_path}"
+assert T_0_qualisys is not None, f"未能读取 T_0_qualisys : {T_0_qualisys_path}"
+T_rigid_rob = np.linalg.inv(T_rob_rigid)
+
+
+
 data_num = 0
 time_start = None
-rigid_end_record_file = lap_set.rigid_end_record_file_path
-rigid_end_calibration_files = glob.glob(os.path.join(lap_set.rigid_end_calibration_folder, '*'))
-rigid_end_calibration_file_names  = [os.path.basename(file_path) for file_path in rigid_end_calibration_files]
-rigid_names = [i.replace('.txt','') for i in rigid_end_calibration_file_names]
-p_rigids_ends = {}
-for _rigid_name in rigid_names:
-    p_rigids_ends[_rigid_name] = np.loadtxt(lap_set.rigid_end_calibration_folder + _rigid_name + '.txt')
+
+start_points_list = []
+directions_list = []
+
+
 # print(p_rigids_ends)
 # print(p_rigids_ends['temp'])
 
@@ -67,6 +86,7 @@ async def main():
     global calibration_rigid_msg
     global msg_finished_flag
     global data_num
+    global start_points_list, directions_list
     # Connect to qtm
     # connection = await qtm_rt.connect("127.0.0.1")
     connection = await qtm_rt.connect(lap_set.qualisys_master_ip)
@@ -116,9 +136,10 @@ async def main():
         time_stamp = time.perf_counter()
         record_time_length = time_stamp - time_start
         print(f"\n{time_stamp}")
-        print(f'录制时长：{int(record_time_length//3600):d}时 {(int(record_time_length)%3600)//60:d}分 {int(record_time_length%60):d}秒')
+        print(f'运行时长：{int(record_time_length//3600):d}时 {(int(record_time_length)%3600)//60:d}分 {int(record_time_length%60):d}秒')
         for rigid_name in body_index:
-            if rigid_name in rigid_names:
+
+            if rigid_name == lap_rigid:
                 # Extract one specific body
                 rigid_index = body_index[rigid_name]
                 position, rotation = bodies[rigid_index]
@@ -129,23 +150,11 @@ async def main():
                 if not np.isnan(position[0]):  
                     T_qualisys_rigid = np.concatenate((R.squeeze(), np.array([[position[0]/1000,position[1]/1000,position[2]/1000]]).T), axis=1)
                     T_qualisys_rigid = np.concatenate((T_qualisys_rigid, np.array([[0,0,0,1]])), axis=0)
-                    # print(f'{rigid_name}:\n{T_qualisys_rigid}')
+                    T_qualisys_rob = T_qualisys_rigid @ T_rigid_rob
+                    start_points_list.append(np.squeeze(T_qualisys_rob[:3,3]).copy())
+                    directions_list.append(np.squeeze(T_qualisys_rob[:3,2]).copy())
 
-                    # print(f"{rigid_name} \n{R}\n{position}")
-                    # p_rigid_end = np.loadtxt(lap_set.rigid_end_calibration_folder + rigid_name + '.txt')
-                    p_qalisys_end = T_qualisys_rigid @ p_rigids_ends[rigid_name]
 
-                    print(f"{rigid_name}:{p_qalisys_end[0]},{p_qalisys_end[1]},{p_qalisys_end[2]}")
-
-                else:
-                    p_qalisys_end = [np.nan, np.nan, np.nan, 1]
-
-                '''     timestamp、     i、             name、          xyz'''
-                data = f'{time_stamp}\t{rigid_index}\t{rigid_name}\t{p_qalisys_end[0]},{p_qalisys_end[1]},{p_qalisys_end[2]}\n'
-                file.write(data)
-                # if not np.isnan(position[0]): print(f'{data}')
-                # print(f'{(time.perf_counter()-time_start):.6f} s')
-                # print("{} - Pos: {} - Rot: {}".format(calibration_rigid_name, position, rotation))
         data_num += 1
 
 
@@ -164,15 +173,11 @@ async def main():
 
 
 
-    # Stop streaming
-    file.close()
-    await connection.stream_frames_stop()
+
 
 
 if __name__ == "__main__":
     time_start = time.perf_counter()
-    file = open(rigid_end_record_file, 'a')
-    file.truncate(0)
 
 
     # rospy.init_node('qualisys_rigids_record', anonymous=True)
@@ -181,7 +186,29 @@ if __name__ == "__main__":
     try:
         # Run our asynchronous function until complete
         asyncio.get_event_loop().run_until_complete(main())
+        # asyncio.wait_for(main(),timeout= 3)
+        # print('asyncio stop')
+        # while True:
+        #     pass
+
     except KeyboardInterrupt:
         print(f'record finished\ndata num:{data_num}')
-        file.close()
-        
+        print(f'list lengths: {len(start_points_list)}  {len(directions_list)}')
+    
+    finally:
+        qualisys_rcm = lap_set.intersection_of_multi_lines(start_points_list, directions_list)
+        base0_rcm = T_0_qualisys @ np.append(qualisys_rcm,1)
+
+        try:
+            rcm_pose = np.loadtxt(f'{lap_set.coordinate_set_folder}/camera_rcm_pose.csv',delimiter=',')
+        except:
+            rcm_pose = np.loadtxt(f'{lap_set.coordinate_set_folder}/camera_rcm_pose.csv',delimiter=' ')
+
+        rcm_pose[:3,3] = base0_rcm[:3]
+        print(f'rcm:\n机械臂基坐标系: {base0_rcm[:3]}\nQualisys坐标系: {qualisys_rcm}')
+
+
+        np.savetxt(f'{lap_set.coordinate_set_folder}/camera_rcm_pose.csv',rcm_pose,delimiter=',')
+        np.savetxt(f'{lap_set.coordinate_set_folder}/qualisys_rcm.txt', qualisys_rcm, delimiter=',')
+
+

@@ -20,17 +20,22 @@ video_file_path = f'{data_folder}/video/output_video.mp4'                 #视�
 video_time_stamp_file_path = f'{data_folder}/video/video_timestamp.txt'   #视频每一帧对应时间戳保存路径
 video_time_stamp_cvcap_file_path = f'{data_folder}/video/video_timestamp_cvcap_ms.txt'  #两种时间戳
 
-rgb2bgr = True          #true 则执行顺序翻转
+rgb2bgr = False          #true 则执行顺序翻转
 video_width = 1920   #并未在所有文件中都采用引用，有些文件中还是用数值设置的分辨率
 video_height = 1080
 video_fps = 30.0
 
 # ------------------------------------------ 动捕 ------------------------------------------
-qualisys_master_ip = "192.168.253.1"
+# qualisys_master_ip = "192.168.253.1"
+qualisys_master_ip = "192.168.253.17"
 qualisys_password = ''
 qtm_rigid_file_path = f'{data_folder}/Qualisys_data/rigid.txt'
 rigid_end_record_file_path = f'{data_folder}/Qualisys_data/rigid_end.txt'
 rigid_end_calibration_folder = f'{data_folder}/rigid_end_calibration/'
+
+rigid_names={}
+rigid_names['qualisys_rob_calibration'] = 'lap'
+rigid_names['rcm_calculate'] = 'lap'
 
 
 # ------------------------------------- rob、camera ip -------------------------------------
@@ -69,7 +74,12 @@ rob_lap_end_vector = np.array([0, 0, 0.52])
 
 
 #2023.09.18 ur5 左臂第一版参数
-T_0_rcm = np.loadtxt(camera_rcm_pose_file[2])
+camera_rcm_pose_index = 0
+try:
+    T_0_rcm = np.loadtxt(camera_rcm_pose_file[camera_rcm_pose_index],delimiter=',')
+except:
+    T_0_rcm = np.loadtxt(camera_rcm_pose_file[camera_rcm_pose_index],delimiter=' ')
+# if T_0_rcm.shape is not 
 # T_0_rcm = transl(-0.4504586100287476, 0.0048914174271517, 0.22233258834111135) @ trotx(np.pi)  @ trotz(np.pi/2)
 # T_0_rcm = transl(-0.5004586100287476, 0.0048914174271517, 0.22233258834111135) @ trotx(np.pi)  @ trotz(np.pi/2)
 # print('T_0_rcm:\n',T_0_rcm)
@@ -137,6 +147,46 @@ T_rob_sensor = np.array([   [0,   1,  0,   0   ],
                             [0,   0,  1,   0   ],
                             [1,   0,  0,   0.12],
                             [0,   0,  0,   1   ]])
+
+
+def intersection_of_multi_lines(start_points = None, directions = None, input_file = None):  
+    """
+    计算 n 条 dim 维直线的交点，输入点和方向或存储的文件
+    Args:
+        start_points (array or list n*dim): 直线上一点坐标
+        directions (array or list n*dim): 直线的指向
+        input_file (文件路径，其中内容为前面两者 n*2dim)
+
+    Returns:
+        m (array dim): 交点坐标（最近点）
+    参考: https://zhuanlan.zhihu.com/p/482655943
+    """
+    print(f'开始计算交点  intersection_of_multi_lines')
+    if input_file is not None:
+        lap_shaft_arrray = np.loadtxt(input_file,delimiter=',')
+        start_points = lap_shaft_arrray[:,:3]
+        directions = lap_shaft_arrray[:,3:]
+
+    else:
+        start_points = np.array(start_points)
+        directions = np.array(directions)
+
+    n, dim = start_points.shape
+
+    G_left = np.tile(np.eye(dim), (n, 1))  
+    G_right = np.zeros((dim*n, n))  
+
+    for i in range(n):
+        G_right[i*dim:(i+1)*dim, i] = -directions[i, :]
+
+    G = np.concatenate([G_left, G_right], axis=1)  
+    d = start_points.reshape((-1, 1)) 
+
+    m = np.linalg.inv(np.dot(G.T, G)).dot(G.T).dot(d)   
+
+    return m[0:dim].squeeze()
+    # return m
+
 
 
 print('\n==================================================\n\t\t lap_set finished\n==================================================\n')

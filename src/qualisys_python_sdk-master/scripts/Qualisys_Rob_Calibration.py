@@ -4,7 +4,7 @@
 calibrate_calculate() 用于直接传入测得的机械臂末端变换矩阵和眼观测的目标位姿，解算手眼相对位姿
 shiu() 用于解算 AX=XB 方程组
 
-根据 fold_path 中的 joints 自动运动，并采集数据 T_0_rob、T_cam_rigid 保存在fold_path
+根据 fold_path (Qualisys_calibration) 中的 joints 自动运动，并采集数据 T_0_rob、T_cam_rigid 保存在fold_path
 并计算和保存 T_0_camera、T_rob_rigid 保存在 fold_path
 
 文件路径仅依赖于 lap_set.data_folder
@@ -32,7 +32,9 @@ sys.path.append(f"{os.path.dirname(__file__)}/../../../scripts")
 import rokae_basic_fun 
 #=======================================================================================================
 
-rigid_calibrate = 'calibrate'
+rigid_calibrate = lap_set.rigid_names['qualisys_rob_calibration']
+assert rigid_calibrate is not None, f'未正确设置刚体名称'
+
 
 step_rigid_get_flag = False
 

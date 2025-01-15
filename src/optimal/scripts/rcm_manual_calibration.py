@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-#对rcm点和rcm坐标进行标定
+"""
+通过直接指向rcm点,对rcm点和rcm坐标进行标定
+(通过测量多个腹腔镜轴线求交点的方法在 rokae_init_pose 和 qualisys的包的 rcm calcul 中，前者取rob的end effector的z轴，后者根据动捕和T_rob_rigid 测定)
+"""
 # import urx
 import signal
 import sys
@@ -29,7 +32,7 @@ right_rcm_p_file = lap_set.right_rcm_p_file
 def write_file(file_path,data):
     if not os.path.exists(file_path):
         os.mknod(file_path)
-    np.savetxt(file_path, data, delimiter=" ")
+    np.savetxt(file_path, data, delimiter=",")
     # print(file_path.replace(coordinate_set_path,'')," writed")
     # print(file_path.replace(coordinate_set_path,'')," write: \n",data,'\n')
     

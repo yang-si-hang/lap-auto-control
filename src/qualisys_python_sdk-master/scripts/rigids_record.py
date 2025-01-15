@@ -131,7 +131,7 @@ async def main():
             # print("q: ",q)
 
             '''     timestamp、     i、             name、          xyz、                                                      wxyz、'''
-            data = f'{time_stamp},\t{rigid_index},\t{rigid_name},\t{position[0]/1000},{position[1]/1000},{position[2]/1000},\t{q[0]},{q[1]},{q[2]},{q[3]}\n'
+            data = f'{time_stamp}\t{rigid_index}\t{rigid_name}\t{position[0]/1000},{position[1]/1000},{position[2]/1000}\t{q[0]},{q[1]},{q[2]},{q[3]}\n'
             file.write(data)
             # if not np.isnan(position[0]): print(f'{data}')
             # print(f'{(time.perf_counter()-time_start):.6f} s')

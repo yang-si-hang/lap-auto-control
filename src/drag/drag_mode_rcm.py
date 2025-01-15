@@ -3,6 +3,8 @@
 
 rcm纠偏，以末端z轴作为腹腔镜轴线
 运行过程中有多线程按键检测，检测到 'r' 则进行力传感器 F0 清零,并更新校准文件
+'l' 锁定机械臂
+'k' 解除锁定
 
 文件路径仅依赖于 lap_set.data_folder
 '''
@@ -140,11 +142,11 @@ damping_linear_z = 80
 damping_angular_matrix = np.zeros((3,3))
 damping_angular_matrix[0,0] = 0.4
 damping_angular_matrix[1,1] = 0.4
-damping_angular_matrix[2,2] = 0.4
+damping_angular_matrix[2,2] = 0.8
 
 rcm_error_velocity = np.array([0.0, 0.0, 0.0])
-rcm_velocity_rate = 1.0/2.5
-rcm_error_threshold = 0.005
+rcm_velocity_rate = 1.0
+rcm_error_threshold = 0.003
 
 acceleration_linear = np.array([0.0, 0.0, 0.0])
 acceleration_angular = np.array([0.0, 0.0, 0.0])
@@ -168,6 +170,8 @@ R_rob_sensor = T_rob_sensor[:3,:3]
 # 各方向上的力分量上限，一旦超过上限，停止运动，以保护力传感器
 sensor_safe_force = 300   
 sensor_safe_torque = 7.5
+
+lock_flag = False
 
 def max_norm(__matrix, __axis = 1):
     '''
@@ -243,7 +247,7 @@ def weighted_moving_average_filter(_before_data, _weights, _stemp_num):
 
 
 def keyboard_listener():
-    global force_sensor_resetting
+    global force_sensor_resetting,lock_flag
     while True:
         rlist, _, _ = keyboard_monitor.detect()
         if rlist:
@@ -257,6 +261,12 @@ def keyboard_listener():
                 F_sensor.F0_write()
                 print(f'time duration of force sensor resseting:{time.perf_counter()-time_temp}')
                 force_sensor_resetting = False
+            elif input_data == 'l':
+                lock_flag = True
+                print(f'机械臂已 锁定')
+            elif input_data == 'k':
+                lock_flag = False
+                print('机械臂已 解锁')
 
 
 # 在后台启动一个监听线程
@@ -322,8 +332,19 @@ if __name__ == "__main__":
             force = F_now_filtered[:3]
             torque = F_now_filtered[3:]
 
+            if lock_flag:
+                rokae.stop()
+                force = np.array([0,0,0],dtype=float)
+                torque = np.array([0,0,0],dtype=float)
+                velocity_linear = np.array([0,0,0],dtype=float)
+                velocity_angular = np.array([0,0,0],dtype=float)
+                acceleration_linear = np.array([0,0,0],dtype=float)
+                acceleration_linear = np.array([0,0,0],dtype=float)
+
+
             # 检验是否超过传感器安全范围
-            if abs(force[0])>sensor_safe_force or abs(force[1])>sensor_safe_force or abs(force[2])>sensor_safe_force or abs(torque[0])>sensor_safe_torque or abs(torque[1])>sensor_safe_torque or abs(torque[2])>sensor_safe_torque:
+            if abs(force[0])>sensor_safe_force or abs(force[1])>sensor_safe_force or abs(force[2])>sensor_safe_force \
+                    or abs(torque[0])>sensor_safe_torque or abs(torque[1])>sensor_safe_torque or abs(torque[2])>sensor_safe_torque:
                 rokae.stop()
                 print(f'====================\nSensor overload!!!!!\nF_now: {F_now_filtered}\nvelocity:{velocity_linear},{velocity_angular}')
                 if __save_data:
@@ -332,10 +353,10 @@ if __name__ == "__main__":
                     vector_s_rcm_list.append(np.array([0,0,0]))
                     torque_force_tau_list.append(np.array([0,0,0]))
                     torque_damp_linear_tau_list.append(np.array([0,0,0]))
-                velocity_linear = np.array([0,0,0])
-                velocity_angular = np.array([0,0,0])
-                acceleration_linear = np.array([0,0,0])
-                acceleration_linear = np.array([0,0,0])
+                velocity_linear = np.array([0,0,0],dtype=float)
+                velocity_angular = np.array([0,0,0],dtype=float)
+                acceleration_linear = np.array([0,0,0],dtype=float)
+                acceleration_linear = np.array([0,0,0],dtype=float)
                 continue
 
             

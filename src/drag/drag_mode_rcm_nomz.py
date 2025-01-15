@@ -1,4 +1,5 @@
-'''
+#!/usr/bin/env python3
+"""
 和 drag_mode_rcm_nomz.py 的不同: # 消除把手偏置力矩
 
 仅由角加速度推算切向加速度
@@ -7,7 +8,7 @@ rcm纠偏，以末端z轴作为腹腔镜轴线
 运行过程中有多线程按键检测，检测到 'r' 则进行力传感器 F0 清零,并更新校准文件
 
 文件路径仅依赖于 lap_set.data_folder
-'''
+"""
 
 import os.path
 import math
