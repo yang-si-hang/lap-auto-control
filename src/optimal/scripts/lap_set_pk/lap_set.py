@@ -25,6 +25,38 @@ video_width = 1920   #并未在所有文件中都采用引用，有些文件中�
 video_height = 1080
 video_fps = 30.0
 
+# ---------------------------------------- 腹腔镜坐标 ----------------------------------------
+T_rob_cam_adjust_flag = True #由于标定问题，需要对 T_rob_camera 进行调整
+Camera_Calibration_folder = f'{data_folder}/Camera_Calibration'
+if os.path.exists(f"{Camera_Calibration_folder}/camera_tool.csv"):
+    T_rob_camera = np.loadtxt(f"{Camera_Calibration_folder}/camera_tool.csv")
+    print(f"T_rob_camera:\n{T_rob_camera}")
+
+    if T_rob_cam_adjust_flag:
+        x = T_rob_camera[:3,2].copy()
+        y = T_rob_camera[:3,0].copy()
+        z = T_rob_camera[:3,1].copy()
+        p = T_rob_camera[:3,3].copy()
+        T_rob_camera[:3,0] = x
+        T_rob_camera[:3,1] = y
+        T_rob_camera[:3,2] = z
+        T_rob_camera = troty(-np.pi/2) @ T_rob_camera
+        T_rob_camera[:3,3] = p
+    T_rob_shaft = T_rob_camera @ trotx(np.pi/6) #将坐标系转回shaft
+
+    T_rob_shaft[:3,:3] = np.array([  #由于标定问题，暂且认为设定坐标系方向
+    [-1, 0, 0],
+    [0, -1, 0],
+    [0, 0, 1],
+    ])
+
+    T_rob_camera = T_rob_shaft @ trotx(-np.pi/6)
+
+    print(f"T_rob_camera:\n{T_rob_camera}")
+    print(f"T_rob_shaft:\n{T_rob_shaft}")
+else:
+    print("[lap_set]: No camera_tool.csv 尚未标定")
+
 # ------------------------------------------ 动捕 ------------------------------------------
 # qualisys_master_ip = "192.168.253.1"
 qualisys_master_ip = "192.168.253.17"
@@ -37,7 +69,23 @@ rigid_names={}
 rigid_names['qualisys_rob_calibration'] = 'lap'
 rigid_names['rcm_calculate'] = 'lap'
 
+model_ex_rigids = ['lap', 'fenliqian', 'changqian', 'chizhenqi', 'jiandao']
 
+
+T_qualisys_rcm = np.array([ # 在使用 qualisys 系统进行 rcm 标定时，根据此矩阵设定rcm坐标系方向，
+                            # 这也会影响 grad_optimal_with_rob 中 lap_X 4自由度优化，
+                            # 因为其中涉及反三角函数的范围
+    [1, 0, 0, 0],
+    [0, -1, 0, 0],
+    [0, 0, -1, 0],
+    [0, 0, 0, 1],
+
+],dtype= float)
+
+if os.path.exists(f'{data_folder}/Qualisys_calibration/T_0_cam.txt'):
+    T_0_qualisys = np.loadtxt(f'{data_folder}/Qualisys_calibration/T_0_cam.txt',delimiter=',')
+else:
+    print('[lap_set] T_0_cam.txt 尚未标定')
 # ------------------------------------- rob、camera ip -------------------------------------
 
 # robot_ip = "192.168.100.101"
@@ -79,6 +127,11 @@ try:
     T_0_rcm = np.loadtxt(camera_rcm_pose_file[camera_rcm_pose_index],delimiter=',')
 except:
     T_0_rcm = np.loadtxt(camera_rcm_pose_file[camera_rcm_pose_index],delimiter=' ')
+#???????
+T_qualisys_rcm = np.loadtxt(f'{data_folder}/coordinate_set/qualisys_rcm.txt',delimiter=',')
+T_0_rcm = T_0_qualisys @ T_qualisys_rcm
+
+
 # if T_0_rcm.shape is not 
 # T_0_rcm = transl(-0.4504586100287476, 0.0048914174271517, 0.22233258834111135) @ trotx(np.pi)  @ trotz(np.pi/2)
 # T_0_rcm = transl(-0.5004586100287476, 0.0048914174271517, 0.22233258834111135) @ trotx(np.pi)  @ trotz(np.pi/2)

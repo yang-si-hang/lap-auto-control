@@ -17,13 +17,15 @@ import rospy
 import time
 from scipy.spatial.transform import Rotation as R
 
+from spatialmath.base import *
+# from math3d.transform import Transform as Trans
 
 
 sys.path.append(f"{os.path.dirname(__file__)}")
 from lap_set_pk import lap_set
 #===================================================================================================
 
-T_rob_cam_adjust_flag = True
+T_rob_cam_adjust_flag = False
 joints = np.array(
     [
         [],
@@ -67,14 +69,26 @@ mtx = np.loadtxt(mtx_path) #内参矩阵
 
 temp_matrix = np.loadtxt(camera_tool_path) #相机相对于机械臂末端的变换矩阵
 if T_rob_cam_adjust_flag:
-# 定义绕 z 轴旋转 90 度
-    rotation_matrix = R.from_euler('z', -90, degrees=True).as_matrix()
-    print(f'rotation matrix :\n{rotation_matrix}')
-    transformation_matrix = np.eye(4)
-    transformation_matrix[:3, :3] = rotation_matrix
-    T_rob_cam = transformation_matrix @ temp_matrix
+#    # 定义绕 z 轴旋转 90 度
+#     rotation_matrix = R.from_euler('z', -90, degrees=True).as_matrix()
+#     print(f'rotation matrix :\n{rotation_matrix}')
+#     transformation_matrix = np.eye(4)
+#     transformation_matrix[:3, :3] = rotation_matrix
+#     T_rob_cam = transformation_matrix @ temp_matrix
+    T_rob_cam = temp_matrix
+    x = T_rob_cam[:3,2].copy()
+    y = T_rob_cam[:3,0].copy()
+    z = T_rob_cam[:3,1].copy()
+    p = T_rob_cam[:3,3].copy()
+    T_rob_cam[:3,0] = x
+    T_rob_cam[:3,1] = y
+    T_rob_cam[:3,2] = z
+    T_rob_cam = troty(-np.pi/2) @ T_rob_cam
+    T_rob_cam[:3,3] = p
 else:
     T_rob_cam = temp_matrix
+
+
 
 # T_rob_cam = np.eye(4)
 # T_rob_cam[:3,0] = -temp_matrix[:3,1]
@@ -82,6 +96,7 @@ else:
 # T_rob_cam[:3,2] = temp_matrix[:3,2]
 # T_rob_cam[:3,3] = temp_matrix[:3,3]
 print(f'T_rob_cam :\n{T_rob_cam}')
+# exit()
 fx = mtx[0,0]
 fy = mtx[1,1]
 cx = mtx[0,2]

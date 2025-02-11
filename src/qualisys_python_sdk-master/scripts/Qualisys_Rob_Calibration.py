@@ -194,7 +194,7 @@ async def move_and_measure():
     for i in range(num_of_pose):
         print(f'--- step {i} ---')
         step_rigid_get_flag = False
-        rokae.jp_cmd(move_joints[i],velocity=10/180*math.pi)
+        rokae.jp_cmd(move_joints[i],velocity=5/180*math.pi)
         await asyncio.sleep(1) #此异步期间会进行on_packet，更新 quealisys 数据
         
         if step_rigid_get_flag:

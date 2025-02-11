@@ -28,15 +28,14 @@ T_0_qualisys_path = f'{fold_path}/T_0_cam.txt'
 
 T_0_qualisys = np.loadtxt(T_0_qualisys_path,delimiter=',')
 qualisys_rcm = np.loadtxt(f'{lap_set.coordinate_set_folder}/qualisys_rcm.txt', delimiter=',')
-rob0_rcm = T_0_qualisys @ np.append(qualisys_rcm, 1)
+rob0_rcm = T_0_qualisys @ qualisys_rcm
 
 try:
     rcm_pose = np.loadtxt(f'{lap_set.coordinate_set_folder}/camera_rcm_pose.csv',delimiter=',')
 except:
     rcm_pose = np.loadtxt(f'{lap_set.coordinate_set_folder}/camera_rcm_pose.csv',delimiter=' ')
 
-print(f'old rcm:{rcm_pose[:3,3]}\nnew rcm:{rob0_rcm[:3]}')
+print(f'old rcm:\n{rcm_pose}\nnew rcm:\n{rob0_rcm}')
 
-rcm_pose[:3,3] = rob0_rcm[:3]
 
-# np.savetxt(f'{lap_set.coordinate_set_folder}/camera_rcm_pose.csv',rcm_pose,delimiter=',')
+# np.savetxt(f'{lap_set.coordinate_set_folder}/camera_rcm_pose.csv', rob0_rcm, delimiter=',')

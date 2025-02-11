@@ -167,6 +167,8 @@ catkin_install_python(PROGRAMS
   scripts/RobotMove.py
   scripts/RobotPose.py
   scripts/Camera_Calibration_data_manual.py
+  scripts/grad_optimal_with_rob.py
+  scripts/lap_pose_pub_and_cmd.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

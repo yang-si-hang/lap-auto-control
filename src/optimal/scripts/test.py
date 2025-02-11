@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import random
+from collections import deque
 
 
 
@@ -99,46 +100,58 @@ def intersection_of_multi_lines(strt_points, directions):
 
 # # 显示图像
 # plt.show()
+#============================================================================================================
+
+# lap_shaft_path = f"{lap_set.data_folder}/pre_data/lap_shaft.txt"# 用于保存{base}下的 腹腔镜轴线（根据几何尺寸推算）
+# lap_shaft_arrray = np.loadtxt(lap_shaft_path,delimiter=',')
+# strt_points = lap_shaft_arrray[:,:3]
+# directions = lap_shaft_arrray[:,3:]
+# lap_intersection = intersection_of_multi_lines(strt_points, directions)
+# # lap_intersection = lap_set.intersection_of_multi_lines(input_file=lap_shaft_path)
 
 
-lap_shaft_path = f"{lap_set.data_folder}/pre_data/lap_shaft.txt"# 用于保存{base}下的 腹腔镜轴线（根据几何尺寸推算）
-lap_shaft_arrray = np.loadtxt(lap_shaft_path,delimiter=',')
-strt_points = lap_shaft_arrray[:,:3]
-directions = lap_shaft_arrray[:,3:]
-lap_intersection = intersection_of_multi_lines(strt_points, directions)
-# lap_intersection = lap_set.intersection_of_multi_lines(input_file=lap_shaft_path)
+# # 可视化
+# fig = plt.figure(figsize=(10, 8))
+# ax = fig.add_subplot(111, projection='3d')
+
+# # 绘制每条直线
+# t_vals = np.linspace(-200, 200, 100)
+# for i in range(strt_points.shape[0]):
+#     p = strt_points[i]
+#     d = directions[i]
+#     line_points = p + t_vals[:, None] * d  # 计算直线上的点
+#     ax.plot(line_points[:, 0], line_points[:, 1], line_points[:, 2], label=f"Line {i+1}")
+
+# # 绘制交点
+# ax.scatter(lap_intersection[0], lap_intersection[1], lap_intersection[2], color='r', s=100, label='Intersection Point')
+
+# # 设置图像标签
+# ax.set_xlabel('X')
+# ax.set_ylabel('Y')
+# ax.set_zlabel('Z')
+
+# # 添加图例
+# ax.legend()
+
+# #坐标范围
+# offset = 0.2  # 0.2米
+# ax.set_xlim(lap_intersection[0] - offset, lap_intersection[0] + offset)
+# ax.set_ylim(lap_intersection[1] - offset, lap_intersection[1] + offset)
+# ax.set_zlim(lap_intersection[2] - offset, lap_intersection[2] + offset)
+
+# # 显示图像
+# plt.show()
+#============================================================================================================
+# T_0_qualisys = lap_set.T_0_qualisys
+# T_qualisys_rcm = np.loadtxt(f'{lap_set.data_folder}/coordinate_set/qualisys_rcm.txt',delimiter=',')
+# T_0_rcm = lap_set.T_0_rcm
+# print(T_0_rcm - (T_0_qualisys @ T_qualisys_rcm))
+# print(T_0_qualisys @ T_qualisys_rcm)
+#============================================================================================================
 
 
-# 可视化
-fig = plt.figure(figsize=(10, 8))
-ax = fig.add_subplot(111, projection='3d')
+v_6dof_dq = deque( maxlen=3)
 
-# 绘制每条直线
-t_vals = np.linspace(-200, 200, 100)
-for i in range(strt_points.shape[0]):
-    p = strt_points[i]
-    d = directions[i]
-    line_points = p + t_vals[:, None] * d  # 计算直线上的点
-    ax.plot(line_points[:, 0], line_points[:, 1], line_points[:, 2], label=f"Line {i+1}")
-
-# 绘制交点
-ax.scatter(lap_intersection[0], lap_intersection[1], lap_intersection[2], color='r', s=100, label='Intersection Point')
-
-# 设置图像标签
-ax.set_xlabel('X')
-ax.set_ylabel('Y')
-ax.set_zlabel('Z')
-
-# 添加图例
-ax.legend()
-
-#坐标范围
-offset = 0.2  # 0.2米
-ax.set_xlim(lap_intersection[0] - offset, lap_intersection[0] + offset)
-ax.set_ylim(lap_intersection[1] - offset, lap_intersection[1] + offset)
-ax.set_zlim(lap_intersection[2] - offset, lap_intersection[2] + offset)
-
-# 显示图像
-plt.show()
-
-
+for i in range(10):
+    v_6dof_dq.append(np.array([i,i,i]))
+    print(f"i:{i} -----------------\n{v_6dof_dq}")
