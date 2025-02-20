@@ -2,6 +2,7 @@
 无论是优化 4dof 还是 3dof 的 lap_X
 此程序中收发和计算的都是 4dof
 如只优化 3dof, 在 grab_optimal_with_rob.py 中将相应量置0
+正常 ctrl+c 退出时, 会执行clean_up 停止 rokae
 
 订阅：
     /cmd/lap_X  由优化程序计算得出的腹腔镜期望位姿(RCM下4自由度)
@@ -34,8 +35,16 @@ import rokae_basic_fun
 rospy.init_node('lap_pose_pub', anonymous=True)
 rokae = rokae_basic_fun.rokae()
 
-loop_rate = 100
-rob_v_pub_rate = 20
+folder = f"{lap_set.data_folder}/auto_model_ex"
+if not os.path.exists(folder):
+    os.makedirs(folder)
+data_record_file = open(f"{folder}/lap_pose_pub_cmd.json", "w") 
+
+v_base0_6dof = np.array([0,0,0,0,0,0])
+rcm_error = np.array([0,0,0])
+
+loop_rate = 200
+rob_v_pub_rate = 100
 pub_loop_num = int(loop_rate/rob_v_pub_rate)
 filter_length = 40 #实时滤波采用的原始数据列表长度
 v_cmd_dq = deque( maxlen=filter_length)
@@ -53,6 +62,7 @@ T_rob_shaft = lap_set.T_rob_shaft
 # ])
 T_0_rcm = lap_set.T_0_rcm
 T_0_qualisys = lap_set.T_0_qualisys
+T_qualisys_0 = np.linalg.inv(T_0_qualisys)
 T_rcm_0 = T_inv_np(T_0_rcm)
 T_shaft_rob = T_inv_np(T_rob_shaft)
 
@@ -100,8 +110,10 @@ def get_lap_X(T_rcm_shaft):
     else:
         gamma = -np.arcsin(np.linalg.norm(singamma_vector))
 
-
-    d = np.linalg.norm(T_rcm_shaft[:3,3])
+    if T_rcm_shaft[1,3]<0:
+        d = np.linalg.norm(T_rcm_shaft[:3,3])
+    else:
+        d = -np.linalg.norm(T_rcm_shaft[:3,3])
 
     return [alpha, beta, gamma, d]
 
@@ -156,7 +168,7 @@ def rob_desired_speed_calculate(lap_X_now, lap_X_cmd, T_0_rob):
     lap_X_dif = lap_X_cmd - lap_X_now
     w_k = np.array([0.1, 0.1, 0.1])
     v_z_k = 0.1
-    v_rcm_k = 0.5
+    v_rcm_k = 0.3
     #假设构建一个 shaft0 坐标系，z与shaft z同，x保持水平（即shaft0 为 gamma = 0 的shaft）
     #首先计算，在 shaft0 坐标系中，期望的角速度
     lap_X_shaft0 = lap_X_now
@@ -194,11 +206,13 @@ def rob_desired_speed_calculate(lap_X_now, lap_X_cmd, T_0_rob):
     w_base0 = R_0_rob @ w_rob
     v_base0_6dof = np.concatenate((v_base0, w_base0))
 
-    base0_rob_p = T_0_rob[:3,3]
+    T_0_shaft = T_0_rob @ T_rob_shaft
+    base0_shaft_p = T_0_shaft[:3,3]
+    print(f"base0_shaft_p:{base0_shaft_p}")
     base0_rcm_p = T_0_rcm[:3,3]
-    base0_rob_z = T_0_rob[:3,2]
-    base0_vector_rob_rcm = base0_rcm_p - base0_rob_p #rob 指向 rcm
-    rcm_error = base0_vector_rob_rcm - np.dot(base0_vector_rob_rcm, base0_rob_z) * base0_rob_z
+    base0_shaft_z = T_0_shaft[:3,2]/np.linalg.norm(T_0_shaft[:3,2])
+    base0_vector_shaft_rcm = base0_rcm_p - base0_shaft_p #shaft 指向 rcm
+    rcm_error = base0_vector_shaft_rcm - np.dot(base0_vector_shaft_rcm, base0_shaft_z) * base0_shaft_z
     rcm_v = v_rcm_k * rcm_error
     rcm_v_norm = np.linalg.norm(rcm_v)
     if rcm_v_norm > v_rcm_max:
@@ -206,11 +220,13 @@ def rob_desired_speed_calculate(lap_X_now, lap_X_cmd, T_0_rob):
         rcm_v = v_rcm_limit_k * rcm_v
     # print(f"v6:{v_base0_6dof}")
     v_base0_6dof[:3] = v_base0_6dof[:3] + rcm_v
-    return v_base0_6dof
+    return v_base0_6dof, rcm_error
 
 def clean_up():
-    rokae.stop()
-    print("clean up")
+    print("clean up start")
+    for _ in range(3):
+        rokae.stop(0.3)
+    print("clean up finish")
 
 def weighted_moving_average_filter(_before_data, _weights, _stemp_num):
     '''
@@ -265,7 +281,7 @@ if __name__ == "__main__":
     # rob_desired_speed_calculate(temp_now, temp_cmd,T_0_rob)
     # exit()
 
-
+    time.sleep(1)
     rate = rospy.Rate(loop_rate)  
     rospy.on_shutdown(clean_up)
     pub_loop_id = 0
@@ -279,7 +295,7 @@ if __name__ == "__main__":
 
         if lap_X_cmd is not None:
             if pub_loop_id >= pub_loop_num:
-                v_base0_6dof = rob_desired_speed_calculate(lap_X_now, lap_X_cmd, T_0_rob)
+                v_base0_6dof, rcm_error = rob_desired_speed_calculate(lap_X_now, lap_X_cmd, T_0_rob)
                 v_cmd_dq.append(v_base0_6dof)
                 v_base0_6dof = weighted_moving_average_filter(v_cmd_dq, filter_weights, filter_length)
                 pub_loop_id = -1
@@ -287,7 +303,8 @@ if __name__ == "__main__":
             print(f"lap_X_now:\t{lap_X_now}")
             print(f"lap_X_cmd:\t{lap_X_cmd}")
             print(f"lap_X_step:\t{lap_X_cmd - lap_X_now}")
-            print(f"v_base0_6dof:{v_base0_6dof}")
+            print(f"rcm_error:\t{rcm_error}")
+            print(f"v_base0_6dof:\t{v_base0_6dof[:3]}\n\t\t{v_base0_6dof[3:]}")
 
         for key, val in qualisys_rigid_end_dict.items():
             if key in lap_set.model_ex_rigids:
@@ -296,15 +313,29 @@ if __name__ == "__main__":
         
         base0_rigid_end_msg = json.dumps(base0_rigid_end_dict)
         base0_rigid_end_pub.publish(base0_rigid_end_msg)
-
+        # print(f"T_0_shaft:{(T_0_shaft)}")
+        # print(f"T_0_cam:{(T_0_shaft @ lap_set.T_shaft_camera)}")
+        # print(f"qualisys_cam_p:{(T_qualisys_0 @ T_0_shaft @ lap_set.T_shaft_camera)[:3,3]}")
+        # print(f"qualisys_fenliqian:{qualisys_rigid_end_dict['fenliqian']}")
+        # print(f"qualisys_chizhenqi:{qualisys_rigid_end_dict['chizhenqi']}")
 
         lap_X_msg.data = lap_X_now
         lap_X_pub.publish(lap_X_msg)
         # print(f"loop time before sleep: {time.perf_counter() - loop_start_time:.6f} s")
+        if lap_X_cmd is not None:
+            data_record_dict = {}
+            data_record_dict["pub_loop_id"] = pub_loop_id
+            data_record_dict["timestamp"] = time.perf_counter()
+            data_record_dict["lap_X_now"] = lap_X_now
+            data_record_dict["lap_X_cmd"] = lap_X_cmd.tolist()
+            data_record_dict["rcm_error"] = rcm_error.tolist()
+            data_record_dict["v_base0_5dof"] = v_base0_6dof.tolist()
+            json.dump(data_record_dict, data_record_file)
         pub_loop_id += 1
         rate.sleep()
         # print(f"loop time after sleep: {time.perf_counter() - loop_start_time:.6f} s")
 
+    data_record_file.close()
     
 
 

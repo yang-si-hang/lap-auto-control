@@ -39,6 +39,7 @@ rigid_names = [i.replace('.txt','') for i in rigid_end_calibration_file_names]
 p_rigids_ends = {}
 for _rigid_name in rigid_names:
     p_rigids_ends[_rigid_name] = np.loadtxt(lap_set.rigid_end_calibration_folder + _rigid_name + '.txt')
+p_rigids_ends['lap'] = np.array([0, 0, 0, 1])
 # print(p_rigids_ends)
 # print(p_rigids_ends['temp'])
 

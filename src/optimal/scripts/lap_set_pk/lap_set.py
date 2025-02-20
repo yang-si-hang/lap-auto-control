@@ -26,11 +26,11 @@ video_height = 1080
 video_fps = 30.0
 
 # ---------------------------------------- 腹腔镜坐标 ----------------------------------------
-T_rob_cam_adjust_flag = True #由于标定问题，需要对 T_rob_camera 进行调整
+T_rob_cam_adjust_flag = False #由于标定问题，需要对 T_rob_camera 进行调整
 Camera_Calibration_folder = f'{data_folder}/Camera_Calibration'
 if os.path.exists(f"{Camera_Calibration_folder}/camera_tool.csv"):
     T_rob_camera = np.loadtxt(f"{Camera_Calibration_folder}/camera_tool.csv")
-    print(f"T_rob_camera:\n{T_rob_camera}")
+    print(f"T_rob_camera_from_txt:\n{T_rob_camera}")
 
     if T_rob_cam_adjust_flag:
         x = T_rob_camera[:3,2].copy()
@@ -39,6 +39,8 @@ if os.path.exists(f"{Camera_Calibration_folder}/camera_tool.csv"):
         p = T_rob_camera[:3,3].copy()
         T_rob_camera[:3,0] = x
         T_rob_camera[:3,1] = y
+        # T_rob_camera[:3,0] = x/4 #？？？
+        # T_rob_camera[:3,1] = y/4
         T_rob_camera[:3,2] = z
         T_rob_camera = troty(-np.pi/2) @ T_rob_camera
         T_rob_camera[:3,3] = p
@@ -49,14 +51,31 @@ if os.path.exists(f"{Camera_Calibration_folder}/camera_tool.csv"):
     [0, -1, 0],
     [0, 0, 1],
     ])
+    degree_rob_shaft = -1.9
+    T_rob_camera[:3, :3] = (T_rob_shaft @ trotx(-np.pi/6))[:3,:3]
 
-    T_rob_camera = T_rob_shaft @ trotx(-np.pi/6)
+    T_rob_shaft[:3,:3] = (trotx(degree_rob_shaft/180*np.pi) @ T_rob_shaft)[:3,:3]
+
+
+    T_rob_shaft[0,3] = 0
+    T_rob_shaft[1,3] = - degree_rob_shaft/180*np.pi *T_rob_shaft[2,3]
+    T_rob_shaft[2,3] = T_rob_camera[2,3] + 0.1
+    T_rob_camera[1,3] = -T_rob_camera[0,3]
+    T_rob_camera[0,3] = 0
+    # T_rob_camera[:2,3] = T_rob_shaft[:2,3].copy()
+    # T_rob_camera[2,3] = T_rob_camera[2,3]
+    
+    # T_rob_camera[0,3] =  -T_rob_camera[0,3].copy()/2
+    # T_rob_camera[1,3] =  T_rob_camera[1,3].copy()
+    # T_rob_camera[1,3] =  T_rob_shaft[1,3]
+    T_shaft_camera = np.linalg.inv(T_rob_shaft) @ T_rob_camera
 
     print(f"T_rob_camera:\n{T_rob_camera}")
     print(f"T_rob_shaft:\n{T_rob_shaft}")
 else:
     print("[lap_set]: No camera_tool.csv 尚未标定")
 
+camera_K = np.loadtxt(f"{data_folder}/Camera_Calibration/mtx.csv")
 # ------------------------------------------ 动捕 ------------------------------------------
 # qualisys_master_ip = "192.168.253.1"
 qualisys_master_ip = "192.168.253.17"
@@ -83,7 +102,9 @@ T_qualisys_rcm = np.array([ # 在使用 qualisys 系统进行 rcm 标定时，�
 ],dtype= float)
 
 if os.path.exists(f'{data_folder}/Qualisys_calibration/T_0_cam.txt'):
-    T_0_qualisys = np.loadtxt(f'{data_folder}/Qualisys_calibration/T_0_cam.txt',delimiter=',')
+    # T_0_qualisys = np.loadtxt(f'{data_folder}/Qualisys_calibration/T_0_cam.txt',delimiter=',')
+    T_0_qualisys = np.loadtxt(f'{data_folder}/Qualisys_calibration/T_0_cam_adjusted.txt',delimiter=',')#？？？
+    print(f"T_0_qualisys:\n{T_0_qualisys}")
 else:
     print('[lap_set] T_0_cam.txt 尚未标定')
 # ------------------------------------- rob、camera ip -------------------------------------
@@ -115,10 +136,10 @@ T_rob_tool = np.array([     [-1.0 , 0.0 ,   0.0 ,   -0.0],
                             [ 0.       ,   0.      ,    0.       ,   1.        ]])
 
 # 定位针，快拆版本
-rob_needle_end_vector = np.array([0, 0, 0.2])
+rob_needle_end_vector = np.array([0, 0, 0.278])
 
 # 腹腔镜末端到机械臂末端法兰尺寸
-rob_lap_end_vector = np.array([0, 0, 0.52])
+rob_lap_end_vector = np.array([0, 0, 0.67])
 
 
 #2023.09.18 ur5 左臂第一版参数
@@ -130,6 +151,8 @@ except:
 #???????
 T_qualisys_rcm = np.loadtxt(f'{data_folder}/coordinate_set/qualisys_rcm.txt',delimiter=',')
 T_0_rcm = T_0_qualisys @ T_qualisys_rcm
+print(f"T_qualisys_rcm:\n{T_qualisys_rcm}")
+print(f"T_0_rcm:\n{T_0_rcm}")
 
 
 # if T_0_rcm.shape is not 

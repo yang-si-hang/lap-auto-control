@@ -170,7 +170,7 @@ class rokae:
 
     
 
-    def cp_cmd(self,T_desire=None, velocity_linear=0.05, velocity_angular=10.0/180.0*math.pi, wait=True, threshold_linear=5e-5, threshold_quaternion=1e-5):
+    def cp_cmd(self,T_desire=None, velocity_linear=0.05, velocity_angular=10.0/180.0*math.pi, wait=True, threshold_linear=5e-5, threshold_quaternion=1e-5, PRINT = True):
         '''
         笛卡尔位姿控制
         '''
@@ -202,13 +202,15 @@ class rokae:
             displacement = position_desire - position_start
             distance = np.linalg.norm(displacement)
             # displace_dir = displacement/distance
-            print(f'displacement: {displacement}')
+            if PRINT:
+                print(f'displacement: {displacement}')
             
 
             
         steps = int(max(distance/velocity_linear*self._frequency, theta/velocity_angular*self._frequency))
         rate = rospy.Rate(self._frequency)
-        print(f'steps: {steps}')
+        if PRINT:
+            print(f'steps: {steps}')
         if steps > 0:
             for i in range(steps+1):
                 if rospy.is_shutdown():
@@ -244,20 +246,23 @@ class rokae:
                 rate.sleep()
                 
             if wait is True:
-                print('wait for cp_cmd...')
+                if PRINT:
+                    print('wait for cp_cmd...')
                 rate = rospy.Rate(self._frequency)
                 error_position = np.linalg.norm(self.pose.position.array()-position_step)
                 error_quaternion = np.linalg.norm(self.pose.orientation.array(sequence='xyzw')-quaternion_step)
 
                 while error_position > threshold_linear or error_quaternion > threshold_quaternion:
                     if error_position > threshold_linear:
-                        print(f'position_step:{position_step}')
-                        print(f'position_cur:{self.pose.position.array()}')
-                        print(f'error_position: {error_position}')
+                        if PRINT:
+                            print(f'position_step:{position_step}')
+                            print(f'position_cur:{self.pose.position.array()}')
+                            print(f'error_position: {error_position}')
                     if error_quaternion > threshold_quaternion:
                         # print(f'quaternion_step:{quaternion_step}')
                         # print(f'quaternion_cur:{self.pose.orientation.array(sequence='xyzw')}')
-                        print(f'error_quaternion: {error_quaternion}')
+                        if PRINT:
+                            print(f'error_quaternion: {error_quaternion}')
                     error_position = np.linalg.norm(self.pose.position.array()-position_step)
                     error_quaternion = np.linalg.norm(self.pose.orientation.array(sequence='xyzw')-quaternion_step)
                     if rospy.is_shutdown():
@@ -266,7 +271,8 @@ class rokae:
                     self.__pub_cp.publish(msg_pub)
                     rate.sleep()
                     pass
-                print('reach cp_cmd')
+                if PRINT:
+                    print('reach cp_cmd')
         return
 
 

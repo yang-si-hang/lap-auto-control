@@ -72,8 +72,12 @@ def save_data(data_list, file_path, key_word):
         else:
             print(f'未记录 {key_word} 信息 {len(data_list)}')
 
+def average_list(data_list):
+    return np.mean(np.array(data_list), axis=0).tolist()
 
 def save_all_data():
+    if len(needle_position_list) >0:
+        needle_position_list.append(average_list(needle_position_list))
     save_data(joints_record_list, joints_record_path, '关节角位置')
     save_data(lap_end_list, lap_end_list_path, '腹腔镜末端位置')
     save_data(needle_position_list, needle_position_path, '标定针位置')
@@ -188,6 +192,7 @@ try:
 
         else:
             input_data=''
+            # print(f"rokae end:\n{rokae.pose.T_matrix()}")
             # count=0
 
 # 程序中断处理        

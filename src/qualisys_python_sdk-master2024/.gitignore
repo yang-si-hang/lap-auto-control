@@ -1,0 +1,17 @@
+/build
+/dist
+/qtm_rt.egg-info
+/env
+/env3
+/.venv
+/.idea
+_build
+_static
+_templates
+*.pyc
+*.pyproj
+*.sublime-*
+/.vscode
+/.pytest_cache
+*/__pycache__
+.coverage*

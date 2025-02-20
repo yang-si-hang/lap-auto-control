@@ -2,6 +2,7 @@
     根据实时腹腔镜位姿和手术器械末端位置
     优化腹腔镜位姿
     并发布优化结果
+    LAP_X_DOF 设为3时, 不优化gamma(置0), 程序中的 lap_X 长度为3, 仅在发布 lap_X_cmd 时补齐为4元素
 
     订阅：
         /state/lap_X    实时腹腔镜4 dof 位姿 
@@ -21,6 +22,7 @@ import sys
 import rospy
 import json
 from std_msgs.msg import Float32MultiArray,String
+import math
 
 
 sys.path.append(f"{os.path.dirname(__file__)}")
@@ -28,7 +30,73 @@ from lap_set_pk import lap_set
 from tools import *
 #============================================================================================
 LAP_X_DOF = 3 #alpha、beta、gamma、d 4自由度，如果设为3，则不优化 gamma = 0
-draw_on = False
+draw_on = True
+
+folder = f"{lap_set.data_folder}/auto_model_ex"
+if not os.path.exists(folder):
+    os.makedirs(folder)
+lap_X_record_path = f"{folder}/grad_opt_lap_X.txt"
+lap_X_record_list = []
+
+alpha_max = -5 *np.pi/180
+alpha_min = -50 *np.pi/180
+beta_max = 50 *np.pi/180
+beta_min = -50 *np.pi/180
+d_max = 0.24
+d_min = 0
+
+
+
+out_of_view_k = tensor([0.02, 0.02])
+
+img_width = lap_set.video_width
+img_height = lap_set.video_height
+
+base0_rigid_end_dict = {}
+#-------------------------------------------------------------------
+inst_in_phase={ #每个阶段使用的器械
+    "gripping": ['fenliqian','chizhenqi'],
+    "needling": ['fenliqian','chizhenqi'],
+    "tightening": ['fenliqian','chizhenqi'],
+    "knotting": ['fenliqian','chizhenqi'],
+    "cutting": ['fenliqian','jiandao'],
+    "moving": ['changqian'],
+    "grabbing": ['changqian'],
+    "placing": ['changqian']
+}
+#--------------------------- 二维像素分布 （生成函数、参数） ---------------------------------
+class Gaussian_Distribution_2D_tensor():
+    def __init__(self, func_args):
+        """
+        Args:
+            func_args (list_like): 高斯参数：[幅度, 旋转角度, x标准差, y标准差, x中心, y中心, 常数偏移]
+        """
+        # 将func_args转换为torch.tensor，并确保可以计算梯度
+        self.func_args = torch.tensor(func_args, dtype=torch.float32, requires_grad=False)
+    
+    def val(self, x_y=None, x=None, y=None):
+        """
+        计算给定坐标下高斯分布的值
+        Args:
+            (x_y 或 x和y 2选1)
+            x_y (list_like): [0]为x, [1]为y. Defaults to None.
+            x (float): Defaults to None.
+            y (float): Defaults to None.
+        Returns:
+            val(float)
+        """
+        if x_y is not None:
+            x = x_y[0]
+            y = x_y[1]
+
+        exponent = -(((x - self.func_args[4]) * torch.cos(self.func_args[1] * torch.pi / 180) + (y - self.func_args[5]) * torch.sin(self.func_args[1] * torch.pi / 180)) / self.func_args[2]) ** 2\
+                - ((-(x - self.func_args[4]) * torch.sin(self.func_args[1] * torch.pi / 180) + (y - self.func_args[5]) * torch.cos(self.func_args[1] * torch.pi / 180)) / self.func_args[3]) ** 2
+        val = (
+            self.func_args[6]
+            + self.func_args[0] * torch.exp(exponent)
+        )
+        # print(f"Gaussian exponent: {exponent}, val: {val}")
+        return val
 
 '''
 f_0 是一个尺度参数，影响整个函数的幅度。
@@ -38,19 +106,75 @@ f_4 和 f_5 是二维高斯分布的中心坐标。
 f_6 是一个常数偏移项。
 '''
 '''                  幅度，       旋转角度，   x标准差,        y标准差,       x中心,       y中心,         常数偏移  '''
-fun_left_0 = [5.410334, 137.06098690, 377.40041913, 431.40073990, 400.18590305, 580.16764162, 0.00402319]
+amplitude = 10  #统一幅值
+sigma_x_k = 2   #扩大sigma
+sigma_y_k = 2
+fun_left_0 = [5.410334, 137.06098690, 377.40041913*sigma_x_k, 431.40073990*sigma_y_k, 400.18590305, 580.16764162, 0.00402319]
 # fun_right_0 = [7.491880, 96.42623581, 99.32096722, 254.80939073, 1300.58609198, 580.94976255, 0.01276680] 
-fun_right_0 = [7.491880, 96.42623581, 299.32096722, 354.80939073, 1300.58609198, 580.94976255, 0.01276680] 
+fun_right_0 = [7.491880, 96.42623581, 299.32096722*sigma_x_k, 354.80939073*sigma_y_k, 1300.58609198, 580.94976255, 0.01276680] 
 # fun_left_0 = [5.410334, 137.06098690, 1377.40041913, 1431.40073990, 400.18590305, 580.16764162, 0.00402319]
-# fun_right_0 = [7.491880, 96.42623581, 1199.32096722, 1254.80939073, 1300.58609198, 580.94976255, 0.01276680] 
+# fun_right_0 = [7.491880, 96.42623581, 1199.32096722, 1254.80939073, 1300.58609198, 580.94976255, 0.01276680]
+gauss_left = Gaussian_Distribution_2D_tensor(fun_left_0)
+gauss_right = Gaussian_Distribution_2D_tensor(fun_right_0)
+gauss_2d_dist_dict={}
+for phase, inst_list in inst_in_phase.items():
+    gauss_2d_dist_dict[phase] = {}
 
-out_of_view_k = tensor([0.02, 0.02])
+'''                                     幅度，          旋转角度，             x标准差,             y标准差,            x中心,              y中心,              常数偏移  '''
+# gauss_2d_params_dict_origin = {
+#     "gripping": {'fenliqian':[0.29679336028228626, -24297.291039090396, 249.0925396162229, 159.19836126414364, 826.3540707773755, 611.6977443500055, 0.0014353834870833061],
+#                  'chizhenqi':[0.23936022047581867, -2645090.74979495, -275.4520573495296, -180.2748809298906, 1069.3232539146484, 463.3722690468168, 0.0010382687460151153]},
+#     "needling": {'fenliqian':[0.1596771363272815047, 102.8059372243528884, 128.6938381590713334, 217.4415386944029365, 846.4356659584245790, 727.6013040538824725, 0.001731287314451205933],
+#                  'chizhenqi':[0.10123281354321009, 275932.51416596415, 256.28881889520864, 168.04463194794437, 1092.4134437266152, 533.7160824913244, 0.0011719898444434685]},
+#     "tightening": {'fenliqian':[0.1641001447875553, -401038.64755309053, 331.5054929131512, 169.39156182042936, 749.2979762710125, 549.222899068901, 0.0018633787942904038],
+#                    'chizhenqi':[0.188852570404634, 1491918.7581617485, 163.1901344595184, 305.8117482461911, 1241.7516516727053, 406.8656641384972, 0.0010562624900361495]},
+#     "knotting": {'fenliqian':[0.2438089602015827, 377111.42279701825, 272.73174593253003, 208.47757430838297, 738.5186343154119, 535.0408307344952, 0.0038910930170683294],
+#                  'chizhenqi':[0.23518751762607656, -323547.36954917957, 213.7419013205909, 303.5886934024331, 1023.2503932472855, 527.7378733139883, -0.00025109612540995176]},
+#     "cutting": {'fenliqian':[0.03017085076602141, -33284.27457708106, 237.7218701150215, 119.22748231994004, 683.2750443514196, 593.3231543199093, 0.000511954513715334],
+#                 'jiandao':[0.028992289693481492, 1465903.7964912858, -194.44442524935735, -159.00062660636607, 1153.3906376084353, 597.0727883756015, 0.0003419666337863225]},
+#     "moving": {'changqian':[0.08377206513361535, 2721870.014681193, 160.7254867501931, 212.91399514744307, 808.7535341529272, 508.3785172533859, 0.00025652060477846796]},
+#     "grabbing": {'changqian':[0.05195384944849729, 633079.7095369393, 210.0889701371155, 157.3175168121141, 782.4599134274677, 520.8383984189799, 0.0001251851142344139]},
+#     "placing": {'changqian':[0.07144402610804718, -894543.4418581283, -144.57888274771312, -148.59171371369692, 869.5551032790868, 578.8806952651478, 0.00011821834733712267]}
+# }
+'''                                     幅度，          旋转角度，             x标准差,             y标准差,            x中心,              y中心,              常数偏移  '''
+gauss_2d_params_dict = {
+    'gripping': {'fenliqian': [0.29679336028228626, -177.29103909039623, 249.0925396162229, 159.19836126414364, 826.3540707773755, 611.6977443500055, 0.0014353834870833061],
+                 'chizhenqi': [0.23936022047581867, -170.74979494977742, -275.4520573495296, -180.2748809298906, 1069.3232539146484, 463.3722690468168, 0.0010382687460151153]},
+    'needling': {'fenliqian': [0.1596771363272815, 102.80593722435289, 128.69383815907133, 217.44153869440294, 846.4356659584246, 727.6013040538825, 0.001731287314451206],
+                 'chizhenqi': [0.10123281354321009, 172.5141659641522, 256.28881889520864, 168.04463194794437, 1092.4134437266152, 533.7160824913244, 0.0011719898444434685]}, 
+    'tightening': {'fenliqian': [0.1641001447875553, -358.64755309053, 331.5054929131512, 169.39156182042936, 749.2979762710125, 549.222899068901, 0.0018633787942904038],
+                   'chizhenqi': [0.188852570404634, 78.75816174852662, 163.1901344595184, 305.8117482461911, 1241.7516516727053, 406.8656641384972, 0.0010562624900361495]},
+    'knotting': {'fenliqian': [0.2438089602015827, 191.42279701825464, 272.73174593253003, 208.47757430838297, 738.5186343154119, 535.0408307344952, 0.0038910930170683294],
+                 'chizhenqi': [0.23518751762607656, -267.3695491795661, 213.7419013205909, 303.5886934024331, 1023.2503932472855, 527.7378733139883, -0.00025109612540995176]},
+    'cutting': {'fenliqian': [0.03017085076602141, -164.27457708105794, 237.7218701150215, 119.22748231994004, 683.2750443514196, 593.3231543199093, 0.000511954513715334],
+                'jiandao': [0.028992289693481492, 343.79649128578603, -194.44442524935735, -159.00062660636607, 1153.3906376084353, 597.0727883756015, 0.0003419666337863225]},
+    'moving': {'changqian': [0.08377206513361535, 270.0146811930463, 160.7254867501931, 212.91399514744307, 808.7535341529272, 508.3785172533859, 0.00025652060477846796]},
+    'grabbing': {'changqian': [0.05195384944849729, 199.7095369392773, 210.0889701371155, 157.3175168121141, 782.4599134274677, 520.8383984189799, 0.0001251851142344139]},
+    'placing': {'changqian': [0.07144402610804718, -303.4418581282953, -144.57888274771312, -148.59171371369692, 869.5551032790868, 578.8806952651478, 0.00011821834733712267]}}
+#统一幅值，扩大标准差
+for phase, insts_dict in gauss_2d_params_dict.items():
+    for inst, val in insts_dict.items():
+        gauss_2d_params_dict[phase][inst][0] = amplitude
+        gauss_2d_params_dict[phase][inst][2] = sigma_x_k * gauss_2d_params_dict[phase][inst][2]
+        gauss_2d_params_dict[phase][inst][3] = sigma_y_k * gauss_2d_params_dict[phase][inst][3]
+        gauss_2d_dist_dict[phase][inst] = Gaussian_Distribution_2D_tensor(gauss_2d_params_dict[phase][inst])
+        # print(f"{phase}\t{inst}\tsigma_xy:{math.sqrt(gauss_2d_params_dict[phase][inst][2]**2 + gauss_2d_params_dict[phase][inst][3]**2)}")
 
-img_width = lap_set.video_width
-img_height = lap_set.video_height
+# for phase, insts_dict in gauss_2d_dist_dict.items():
+#     print(f"phase ----------")
+#     for inst, val in insts_dict.items():
+#         print(inst)
 
-base0_rigid_end_dict = {}
+# gauss_dict_temp = gauss_2d_params_dict.copy()
+# for phase, insts_dict in gauss_2d_params_dict.items():
+#     for inst, val in insts_dict.items():
+#         angle = gauss_dict_temp[phase][inst][1]
+#         roll_num = int(angle/360)
+#         angle = angle - 360* roll_num
+#         gauss_dict_temp[phase][inst][1] = angle
+# print(gauss_dict_temp)
 
+#------------------------ 深度分布 ------------------------------
 # lap d 高斯拟合结果
 # [gripping]      mean:   0.15950481412772527     std:0.026330795983790005
 # [needling]      mean:   0.1859067586628832      std:0.021118937615869898
@@ -84,7 +208,8 @@ d_sigma = {
 }
 d_normal_distributions = {} #lap_X 中 d 在不同 phase 下的正态分布
 for phase in phases_list:
-    d_normal_distributions[phase] = torch.distributions.Normal(d_mu[phase], d_sigma[phase])
+    d_normal_distributions[phase] = torch.distributions.Normal(d_mu[phase]+0.01, d_sigma[phase])
+#-------------------------------------------------------------------
 phase = "gripping"
 
 if LAP_X_DOF == 4:
@@ -103,8 +228,8 @@ inst_0_p2 = None
 
 
 Camera_Calibration_folder = f'{lap_set.data_folder}/Camera_Calibration'
-T_rob_camera = np.loadtxt(f"{Camera_Calibration_folder}/camera_tool.csv")
-T_rob_camera = torch.tensor(T_rob_camera)
+# T_rob_camera = np.loadtxt(f"{Camera_Calibration_folder}/camera_tool.csv")
+T_rob_camera = torch.tensor(lap_set.T_rob_camera)
 
 
 cam_K = tensor([
@@ -112,6 +237,7 @@ cam_K = tensor([
     [0,                         1.323800731972558879e+03,   5.572575084185185688e+02,   0],
     [0,                         0,                          1,                          0]
 ])
+# cam_K[:3,:3] = torch.tensor(lap_set.camera_K)
 
 T_0_rcm = tensor(lap_set.T_0_rcm, dtype= torch.float32)
 
@@ -120,7 +246,8 @@ class instrument():
         self.name = name
 
 
-T_shaft_cam = rotation_x_T(tensor(-torch.pi/6))
+# T_shaft_cam = rotation_x_T(tensor(-torch.pi/6))
+T_shaft_cam = torch.tensor(lap_set.T_shaft_camera, dtype=torch.float32)
 T_rcm_shaft_0 = tensor([
     [1, 0,  0,  0],
     [0, 0,  -1, 0],
@@ -139,47 +266,23 @@ def T_rcm_shaft_calculate(lap_X):
     Returns:
         _type_: _description_
     """
-    alpha = lap_X[0]
-    beta = lap_X[1]
-    gamma = lap_X[2]
-    d = lap_X[3]
+    if LAP_X_DOF == 4:
+        alpha = lap_X[0]
+        beta = lap_X[1]
+        gamma = lap_X[2]
+        d = lap_X[3]
+    else:
+        alpha = lap_X[0]
+        beta = lap_X[1]
+        gamma = torch.tensor(0.0)
+        d = lap_X[2]
+
     add_d = torch.zeros(4, 4)
     add_d[1, 3] =-d
-    T_rcm_cam = rotation_z_T(beta) @ rotation_x_T(alpha) @  rotation_y_T(gamma) @ (add_d + T_rcm_shaft_0)
-    return T_rcm_cam
+    T_rcm_shaft = rotation_z_T(beta) @ rotation_x_T(alpha) @  rotation_y_T(gamma) @ (add_d + T_rcm_shaft_0)
+    return T_rcm_shaft
 
-class Gaussian_Distribution_2D_tensor():
-    def __init__(self, func_args):
-        """
-        Args:
-            func_args (list_like): 高斯参数：[幅度, 旋转角度, x标准差, y标准差, x中心, y中心, 常数偏移]
-        """
-        # 将func_args转换为torch.tensor，并确保可以计算梯度
-        self.func_args = torch.tensor(func_args, dtype=torch.float32, requires_grad=False)
-    
-    def val(self, x_y=None, x=None, y=None):
-        """
-        计算给定坐标下高斯分布的值
-        Args:
-            (x_y 或 x和y 2选1)
-            x_y (list_like): [0]为x, [1]为y. Defaults to None.
-            x (float): Defaults to None.
-            y (float): Defaults to None.
-        Returns:
-            val(float)
-        """
-        if x_y is not None:
-            x = x_y[0]
-            y = x_y[1]
 
-        val = (
-            self.func_args[6]
-            + self.func_args[0] * torch.exp(
-                -(((x - self.func_args[4]) * torch.cos(self.func_args[1] * torch.pi / 180) + (y - self.func_args[5]) * torch.sin(self.func_args[1] * torch.pi / 180)) / self.func_args[2]) ** 2
-                - ((-(x - self.func_args[4]) * torch.sin(self.func_args[1] * torch.pi / 180) + (y - self.func_args[5]) * torch.cos(self.func_args[1] * torch.pi / 180)) / self.func_args[3]) ** 2
-            )
-        )
-        return val
 
 
 def pixel_position(T_0_cam, inst_0_p):
@@ -194,15 +297,14 @@ def pixel_position(T_0_cam, inst_0_p):
         pixel_p(3): 像素齐次坐标[u, v, 1]
     """
     T_cam_0 = T_inv(T_0_cam)
-    inst_cam_p = T_cam_0 @ inst_0_p
-    z = inst_cam_p[2]
-    pixel_p = cam_K @ inst_cam_p/z
+    cam_inst_p = T_cam_0 @ inst_0_p
+    z = cam_inst_p[2]
+    pixel_p = cam_K @ cam_inst_p/z
     return pixel_p
 
 
 
-gauss_left = Gaussian_Distribution_2D_tensor(fun_left_0)
-gauss_right = Gaussian_Distribution_2D_tensor(fun_right_0)
+
 
 
 def pixel_loss(pixel_p,distribution, weight = 1):
@@ -257,16 +359,22 @@ def loss_function(lap_X):
     # return torch.sum(T_rcm_cam )
     # return torch.sum(rotation_z_T(lap_X[1]) @ rotation_x_T(lap_X[0]) @  rotation_y_T(lap_X[2]) @ ( T_rcm_shaft_0))
     T_0_cam = T_0_rcm @ T_rcm_cam
+    # print(f"T_0_cam:\n{T_0_cam}")
     # return torch.sum(T_0_cam)
     pixel_p1 = pixel_position(T_0_cam, inst_0_p1)
     pixel_p2 = pixel_position(T_0_cam, inst_0_p2)
-    loss_list = [pixel_loss(pixel_p1, gauss_left), pixel_loss(pixel_p2, gauss_right), out_of_view_loss(pixel_p1), out_of_view_loss(pixel_p2), d_normal_dist_loss(lap_X[3])]
+    # print(f"inst left:{ inst_0_p1}, right:{inst_0_p2}, \ncam:\n{T_0_cam}")
+    # print(f"pixel: {pixel_p1.data},  {pixel_p2.data}")
+    if LAP_X_DOF == 4:
+        loss_list = [pixel_loss(pixel_p1, gauss_left), pixel_loss(pixel_p2, gauss_right), out_of_view_loss(pixel_p1), out_of_view_loss(pixel_p2), d_normal_dist_loss(lap_X[3])]
+    else:
+        loss_list = [pixel_loss(pixel_p1, gauss_left), pixel_loss(pixel_p2, gauss_right), out_of_view_loss(pixel_p1), out_of_view_loss(pixel_p2), d_normal_dist_loss(lap_X[2])]
     loss = sum(loss_list)
     # loss = pixel_loss(pixel_p1, gauss_left) + pixel_loss(pixel_p2, gauss_right) + out_of_view_loss(pixel_p1) + out_of_view_loss(pixel_p2) + torch.abs(3*lap_X[2]) #+ torch.pow(0.1,  10* lap_X[3])
     # loss = pixel_loss(pixel_p1, gauss_left) + out_of_view_loss(pixel_p1)
     # loss = pixel_loss(pixel_p2, gauss_right, 10) + out_of_view_loss(pixel_p2)
     # loss = pixel_loss(pixel_p1, gauss_left) + pixel_loss(pixel_p2, gauss_right)
-    print(f"loss: {loss_list}")
+    # print(f"loss: {loss_list}")
     return loss
 
 
@@ -294,6 +402,7 @@ optimizer = optim.Adam([lap_X],
 
 
 if draw_on:
+    plt.ion()  # 开启交互模式
     # 创建图像窗口
     plt.figure(figsize=(10, 6))
 
@@ -311,15 +420,23 @@ if draw_on:
     # 绘制热力图
     plt.imshow(Z, extent=[0, img_width, 0, img_height], origin='lower', cmap='viridis', aspect='auto')
     plt.colorbar(label='Gaussian Value')
+    plt.draw()
+    plt.show()
+    # plt.pause(5)
 
 
 def optimize_epoches(epoch_num):
-    global lap_X, inst_0_p1, inst_0_p2
+    global lap_X, inst_0_p1, inst_0_p2, lap_X_record_list
+
+    if draw_on:
+            plt.clf()
+            plt.imshow(Z, extent=[0, img_width, 0, img_height], origin='lower', cmap='viridis', aspect='auto')
+
     start_time = time.perf_counter()
     # 优化过程
     for epoch in range(epoch_num):
         loop_start_time = time.perf_counter()
-        # 清零梯度
+         # 清零梯度
         optimizer.zero_grad()
 
         # 计算损失
@@ -329,7 +446,7 @@ def optimize_epoches(epoch_num):
         loss.backward()
         # print(f"Loss: {loss.item()}, ")
         # 打印 lap_X 的梯度
-        print(f"lap_X:{[f'{x:.2f}' for x in lap_X.tolist()]}, lap_X.grad:{lap_X.grad}" )
+        print(f"epoch: {epoch}, \tlap_X:{[f'{x:.2f}' for x in lap_X.tolist()]}, lap_X.grad:{lap_X.grad.data}" )
         # 更新参数
         optimizer.step()
         
@@ -345,6 +462,8 @@ def optimize_epoches(epoch_num):
                 plt.scatter(pixel_p2[0].item(), pixel_p2[1].item(), color='red', s=5, label=f'Epoch {epoch + 1}')
                 plt.text(pixel_p2[0].item(), pixel_p2[1].item(),f'{epoch} ', color='white', fontsize=8)
 
+        if epoch % 10 == 0:
+            lap_X_record_list.append([time.perf_counter(), epoch, phase] + lap_X.detach().numpy().tolist())
 
         # # 打印当前损失和优化参数
         # if epoch % 1 == 0:
@@ -353,7 +472,7 @@ def optimize_epoches(epoch_num):
         #         one loop: {float(time.perf_counter()-loop_start_time):.3f} s")
             
     duration = time.perf_counter() - start_time
-    print(f"lap_X:{[f'{x:.2f}' for x in lap_X.tolist()]},\tdurationg: {duration:.3f}")
+    print(f"loop  lap_X:{[f'{x:.3f}' for x in lap_X.tolist()]},\tdurationg: {duration:.3f}")
 
     if draw_on:
         # 显示最终图像
@@ -362,7 +481,9 @@ def optimize_epoches(epoch_num):
         plt.gca().invert_yaxis()
         plt.title('2D Gaussian Distribution with Optimized Coordinates')
         plt.legend()
-        plt.show()
+        # plt.show()
+        plt.draw()
+        plt.pause(0.01)
 
 def lap_X_callback(msg):
     global lap_X_now
@@ -372,14 +493,16 @@ def lap_X_callback(msg):
 def base0_rigid_end_callback(msg):
     global base0_rigid_end_dict, inst_0_p1, inst_0_p2
     base0_rigid_end_dict =  json.loads(msg.data)
-    fenliqian_numpy = np.array(base0_rigid_end_dict['fenliqian'])
+    fenliqian_numpy = np.array(base0_rigid_end_dict['fenliqian']) #???不同阶段其他器械
     chizhenqi_numpy = np.array(base0_rigid_end_dict['chizhenqi'])
-    if fenliqian_numpy[0] is not np.nan:
+    if not np.isnan(fenliqian_numpy[0]):
         inst_0_p1 = torch.tensor(fenliqian_numpy, dtype= torch.float32)
-    if chizhenqi_numpy[0] is not np.nan:
+    if not np.isnan(chizhenqi_numpy[0]):
         inst_0_p2 = torch.tensor(chizhenqi_numpy,  dtype=torch.float32)
         
-
+def phase_callback(msg):
+    global phase
+    phase = msg.data
 
 
 if __name__ == "__main__":
@@ -387,6 +510,7 @@ if __name__ == "__main__":
 
     rospy.Subscriber('/state/lap_X',Float32MultiArray, lap_X_callback)
     rospy.Subscriber('/base0_rigid_end_pub',String, base0_rigid_end_callback)
+    rospy.Subscriber('/phase',String, phase_callback)
     lap_X_desired_pub = rospy.Publisher('/cmd/lap_X',Float32MultiArray,queue_size=1)
     lap_X_desired_msg = Float32MultiArray()
 
@@ -395,14 +519,47 @@ if __name__ == "__main__":
             pass
         
         if lap_X_now is not None:
-            lap_X.data = lap_X_now
-            if LAP_X_DOF == 3:
-                lap_X[2] = 0.0
+            if LAP_X_DOF == 4:
+                lap_X.data = lap_X_now
+            else:
+                lap_X.data[0] = lap_X_now[0]
+                lap_X.data[1] = lap_X_now[1]
+                lap_X.data[2] = lap_X_now[3]
 
         # print(f"lap_X:{lap_X}")
         optimize_epoches(100)
         # print(f"lap_X:{lap_X}")
         if not torch.isnan(lap_X).any():
             lap_X_val = lap_X.detach().numpy()
-            lap_X_desired_msg.data = lap_X_val.tolist()
+
+            if lap_X_val[0] > alpha_max: lap_X_val[0] = alpha_max
+            elif lap_X_val[0] < alpha_min: lap_X_val[0] = alpha_min
+
+            if lap_X_val[1] > beta_max: lap_X_val[1] = beta_max
+            elif lap_X_val[1] < beta_min: lap_X_val[1] = beta_min
+
+            
+
+            if LAP_X_DOF == 4:
+                if lap_X_val[3] > d_max: lap_X_val[3] = d_max
+                elif lap_X_val[3] < d_min: lap_X_val[3] = d_min
+                lap_X_desired_msg.data = lap_X_val.tolist()
+            else:
+                if lap_X_val[2] > d_max: lap_X_val[2] = d_max
+                elif lap_X_val[2] < d_min: lap_X_val[2] = d_min
+                lap_X_desired_msg.data = [lap_X_val[0], lap_X_val[1], 0, lap_X_val[2]]
+
+                #以下为手动设置回零位或指定位置
+                # lap_X_desired_msg.data = np.array(lap_X_now.detach().numpy() * 1/10).tolist()
+                # # lap_X_desired_msg.data[0] = - 30.0/180 * np.pi
+                # # lap_X_desired_msg.data[0] = - 10.0/180 * np.pi
+                # lap_X_desired_msg.data[0] = -0/180 * np.pi
+                # lap_X_desired_msg.data[1] = 20/180 * np.pi
+                # lap_X_desired_msg.data[2] = 0
+                # # lap_X_desired_msg.data[3] = 0.29
+                # lap_X_desired_msg.data[3] = 0.16
+                # # lap_X_desired_msg.data[3] = 0.24
+
             lap_X_desired_pub.publish(lap_X_desired_msg)
+    
+    np.savetxt(lap_X_record_path, lap_X_record_list, delimiter=',')
