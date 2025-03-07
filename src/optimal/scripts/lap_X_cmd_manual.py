@@ -25,10 +25,10 @@ rospy.init_node('lap_X_cmd_manual')
 lap_X_desired_pub = rospy.Publisher('/cmd/lap_X',Float32MultiArray,queue_size=1)
 lap_X_desired_msg = Float32MultiArray()
 lap_X_desired_msg.data = [0, 0, 0, 0.16]
-lap_X_desired_msg.data[0] = -20/180 * np.pi
+lap_X_desired_msg.data[0] = -10/180 * np.pi
 lap_X_desired_msg.data[1] = 0/180 * np.pi
 lap_X_desired_msg.data[2] = 0
-lap_X_desired_msg.data[3] = 0.14
+lap_X_desired_msg.data[3] = 0.16
 
 step_length = [1/180*np.pi, 1/180*np.pi, 1/180*np.pi, 0.005]
 

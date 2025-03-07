@@ -170,6 +170,7 @@ catkin_install_python(PROGRAMS
   scripts/grad_optimal_with_rob.py
   scripts/lap_pose_pub_and_cmd.py
   scripts/lap_X_cmd_manual.py
+  scripts/phase_manual.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

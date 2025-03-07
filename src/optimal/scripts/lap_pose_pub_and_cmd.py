@@ -163,12 +163,14 @@ def rob_desired_speed_calculate(lap_X_now, lap_X_cmd, T_0_rob):
     lap_X_cmd = np.array(lap_X_cmd)
 
 
-    v_all_max = 0.05 #不包含 v_rmc
+    v_all_max = 0.03 #不包含 v_rmc
     v_rcm_max = 0.03
     lap_X_dif = lap_X_cmd - lap_X_now
-    w_k = np.array([0.1, 0.1, 0.1])
-    v_z_k = 0.1
-    v_rcm_k = 0.3
+    w_k = np.array([0.3, 0.3, 0.3])
+    # w_k = np.array([0.1, 0.1, 0.1])
+    v_z_k = 0.3
+    # v_z_k = 0.1
+    v_rcm_k = 0.5
     #假设构建一个 shaft0 坐标系，z与shaft z同，x保持水平（即shaft0 为 gamma = 0 的shaft）
     #首先计算，在 shaft0 坐标系中，期望的角速度
     lap_X_shaft0 = lap_X_now
@@ -196,7 +198,7 @@ def rob_desired_speed_calculate(lap_X_now, lap_X_cmd, T_0_rob):
     v_rob_norm = np.linalg.norm(v_rob[:3])
     if v_rob_norm > v_all_max:
         limit_k = v_all_max/v_rob_norm
-        # print(f"before limit_k: limit_k:{limit_k}, L:{L},\tv_rob:{v_rob}, \tw_rob:{w_rob}")
+        print(f"before limit_k: limit_k:{limit_k}, L:{L},\tv_rob:{v_rob}, \tw_rob:{w_rob}")
         w_rob[:2] = w_rob[:2] * limit_k
         v_rob[:3] = v_rob[:3] * limit_k
 
@@ -330,7 +332,7 @@ if __name__ == "__main__":
             data_record_dict["lap_X_cmd"] = lap_X_cmd.tolist()
             data_record_dict["rcm_error"] = rcm_error.tolist()
             data_record_dict["v_base0_5dof"] = v_base0_6dof.tolist()
-            json.dump(data_record_dict, data_record_file)
+            json.dump(data_record_dict, data_record_file, indent=4)
         pub_loop_id += 1
         rate.sleep()
         # print(f"loop time after sleep: {time.perf_counter() - loop_start_time:.6f} s")

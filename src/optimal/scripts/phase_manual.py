@@ -28,6 +28,16 @@ import signal
 
 phase_id = 0
 phases_list = ["gripping", "needling", "tightening", "knotting", "cutting", "moving", "grabbing", "placing"]
+phase_chinese = {
+    "gripping": "调针",
+    "needling": "进针", 
+    "tightening": "拉线", 
+    "knotting": "打结", 
+    "cutting": "剪线", 
+    "moving": "转移", 
+    "grabbing": "抓取", 
+    "placing": "放置"
+}
 model_ex_phase_list = ["gripping",  #进针打结
                        "needling",
                        "tightening",
@@ -82,7 +92,7 @@ try:
                 phase = model_ex_phase_list[phase_id]
                 phase_msg.data = phase
                 phase_pub.publish(phase_msg)
-                print(f"{phase_id}: {phase}")
+                print(f"{phase_id}: {phase_chinese[phase]}")
 
 
             elif input_data == "s" or input_data == "d":
@@ -93,7 +103,7 @@ try:
                 phase = model_ex_phase_list[phase_id]
                 phase_msg.data = phase
                 phase_pub.publish(phase_msg)
-                print(f"{phase_id}: {phase}")
+                print(f"{phase_id}: {phase_chinese[phase]}")
                 
 
         else:
@@ -101,7 +111,7 @@ try:
             # count=0
     
         if loop_id %5 ==0:
-            print(f"{phase_id}: {phase}")
+            print(f"{phase_id}: {phase_chinese[phase]}")
             phase_msg.data = phase
             phase_pub.publish(phase_msg)
         loop_id += 1

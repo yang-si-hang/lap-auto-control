@@ -30,20 +30,25 @@ from lap_set_pk import lap_set
 from tools import *
 #============================================================================================
 LAP_X_DOF = 3 #alpha、beta、gamma、d 4自由度，如果设为3，则不优化 gamma = 0
-draw_on = True
+draw_on = True #是否绘图并保存
+show_on = False #是否显示图片
+draw_and_save_step = 5 #优化几次存储一次优化图像 （一次优化图像包含完整的多次迭代）
+draw_and_save_id = 0
 
 folder = f"{lap_set.data_folder}/auto_model_ex"
-if not os.path.exists(folder):
-    os.makedirs(folder)
-lap_X_record_path = f"{folder}/grad_opt_lap_X.txt"
-lap_X_record_list = []
+optimal_fig_folder = f"{folder}/optimal_fig"
+if not os.path.exists(folder): os.makedirs(folder)
+if not os.path.exists(optimal_fig_folder): os.makedirs(optimal_fig_folder)
 
-alpha_max = -5 *np.pi/180
+lap_X_record_path = f"{folder}/grad_opt_lap_X.txt"
+lap_X_record_file = open(lap_X_record_path, 'w')
+
+alpha_max = -15 *np.pi/180
 alpha_min = -50 *np.pi/180
 beta_max = 50 *np.pi/180
 beta_min = -50 *np.pi/180
-d_max = 0.24
-d_min = 0
+d_max = 0.20
+d_min = 0.05
 
 
 
@@ -53,7 +58,18 @@ img_width = lap_set.video_width
 img_height = lap_set.video_height
 
 base0_rigid_end_dict = {}
+
+cam_K = tensor([
+    [1.321383458370769176e+03,  0,                          9.680885724568087198e+02,   0],
+    [0,                         1.323800731972558879e+03,   5.572575084185185688e+02,   0],
+    [0,                         0,                          1,                          0]
+])
+cam_K[:3,:3] = torch.tensor(lap_set.camera_K)
+cam_dist = torch.tensor(lap_set.camera_dist)
+
 #-------------------------------------------------------------------
+phases_list = ["gripping", "needling", "tightening", "knotting", "cutting", "moving", "grabbing", "placing"]
+
 inst_in_phase={ #每个阶段使用的器械
     "gripping": ['fenliqian','chizhenqi'],
     "needling": ['fenliqian','chizhenqi'],
@@ -63,6 +79,18 @@ inst_in_phase={ #每个阶段使用的器械
     "moving": ['changqian'],
     "grabbing": ['changqian'],
     "placing": ['changqian']
+}
+inst_changing = False #用于一些阶段切换需要换器械时进行延迟
+#-------------------------------------------------------------------
+pixel_adjust_dict={
+    "gripping": torch.tensor([60, 70, 0]),
+    "needling": torch.tensor([-50, 200, 0]),
+    "tightening": torch.tensor([150, 0, 0]),
+    "knotting": torch.tensor([10, 30, 0]),
+    "cutting": torch.tensor([20, 130, 0]),
+    "moving": torch.tensor([250, 0, 0]),
+    "grabbing": torch.tensor([200, 100, 0]),
+    "placing": torch.tensor([250, 70, 0])
 }
 #--------------------------- 二维像素分布 （生成函数、参数） ---------------------------------
 class Gaussian_Distribution_2D_tensor():
@@ -107,15 +135,15 @@ f_6 是一个常数偏移项。
 '''
 '''                  幅度，       旋转角度，   x标准差,        y标准差,       x中心,       y中心,         常数偏移  '''
 amplitude = 10  #统一幅值
-sigma_x_k = 2   #扩大sigma
-sigma_y_k = 2
-fun_left_0 = [5.410334, 137.06098690, 377.40041913*sigma_x_k, 431.40073990*sigma_y_k, 400.18590305, 580.16764162, 0.00402319]
+sigma_x_k = 6   #扩大sigma
+sigma_y_k = 6
+# fun_left_0 = [5.410334, 137.06098690, 377.40041913*sigma_x_k, 431.40073990*sigma_y_k, 400.18590305, 580.16764162, 0.00402319]
 # fun_right_0 = [7.491880, 96.42623581, 99.32096722, 254.80939073, 1300.58609198, 580.94976255, 0.01276680] 
-fun_right_0 = [7.491880, 96.42623581, 299.32096722*sigma_x_k, 354.80939073*sigma_y_k, 1300.58609198, 580.94976255, 0.01276680] 
+# fun_right_0 = [7.491880, 96.42623581, 299.32096722*sigma_x_k, 354.80939073*sigma_y_k, 1300.58609198, 580.94976255, 0.01276680] 
 # fun_left_0 = [5.410334, 137.06098690, 1377.40041913, 1431.40073990, 400.18590305, 580.16764162, 0.00402319]
 # fun_right_0 = [7.491880, 96.42623581, 1199.32096722, 1254.80939073, 1300.58609198, 580.94976255, 0.01276680]
-gauss_left = Gaussian_Distribution_2D_tensor(fun_left_0)
-gauss_right = Gaussian_Distribution_2D_tensor(fun_right_0)
+# gauss_left = Gaussian_Distribution_2D_tensor(fun_left_0)
+# gauss_right = Gaussian_Distribution_2D_tensor(fun_right_0)
 gauss_2d_dist_dict={}
 for phase, inst_list in inst_in_phase.items():
     gauss_2d_dist_dict[phase] = {}
@@ -185,16 +213,15 @@ for phase, insts_dict in gauss_2d_params_dict.items():
 # [grabbing]      mean:   0.17587754305798572     std:0.03316702150082586
 # [placing]       mean:   0.15800867650553185     std:0.03952393029223555
 # 定义正态分布的均值(mu)和标准差(sigma)
-phases_list = ["gripping", "needling", "tightening", "knotting", "cutting", "moving", "grabbing", "placing"]
 d_mu = {
     "gripping": torch.tensor(0.15950481412772527),
-    "needling": torch.tensor(0.1859067586628832),
+    "needling": torch.tensor(0.1859067586628832 + 0.01),
     "tightening": torch.tensor(0.13961117283683613),
     "knotting": torch.tensor(0.16773371255903682),
     "cutting": torch.tensor(0.15678583345909003),
     "moving": torch.tensor(0.11960882171313425),
-    "grabbing": torch.tensor(0.17587754305798572),
-    "placing": torch.tensor(0.15800867650553185)
+    "grabbing": torch.tensor(0.17587754305798572+0.022),
+    "placing": torch.tensor(0.15800867650553185+0.035)
 }
 d_sigma = {
     "gripping": torch.tensor(0.026330795983790005),
@@ -207,8 +234,8 @@ d_sigma = {
     "placing": torch.tensor(0.03952393029223555)
 }
 d_normal_distributions = {} #lap_X 中 d 在不同 phase 下的正态分布
-for phase in phases_list:
-    d_normal_distributions[phase] = torch.distributions.Normal(d_mu[phase]+0.01, d_sigma[phase])
+for _phase in phases_list:
+    d_normal_distributions[_phase] = torch.distributions.Normal(d_mu[_phase], d_sigma[_phase])
 #-------------------------------------------------------------------
 phase = "gripping"
 
@@ -223,8 +250,14 @@ lap_X_now = None #接收到的现在机器人的 lap_X 实际值
 
 # inst_0_p1 = tensor([-0.02, 0.21, 0.03, 1]) #0坐标系下器械位置
 # inst_0_p2 = tensor([0.02, 0.21, 0.03, 1])
-inst_0_p1 = None #0坐标系下器械位置
-inst_0_p2 = None
+# inst_0_p1 = None #0坐标系下器械位置
+# inst_0_p2 = None
+inst_0_p_dict = {
+    'fenliqian':None,
+    'chizhenqi':None,
+    'jiandao':None,
+    'changqian':None
+}
 
 
 Camera_Calibration_folder = f'{lap_set.data_folder}/Camera_Calibration'
@@ -232,12 +265,7 @@ Camera_Calibration_folder = f'{lap_set.data_folder}/Camera_Calibration'
 T_rob_camera = torch.tensor(lap_set.T_rob_camera)
 
 
-cam_K = tensor([
-    [1.321383458370769176e+03,  0,                          9.680885724568087198e+02,   0],
-    [0,                         1.323800731972558879e+03,   5.572575084185185688e+02,   0],
-    [0,                         0,                          1,                          0]
-])
-# cam_K[:3,:3] = torch.tensor(lap_set.camera_K)
+
 
 T_0_rcm = tensor(lap_set.T_0_rcm, dtype= torch.float32)
 
@@ -283,6 +311,28 @@ def T_rcm_shaft_calculate(lap_X):
     return T_rcm_shaft
 
 
+def apply_distortion(pixel_p):
+    """根据畸变参数和未畸变投影坐标，计算畸变后的投影坐标
+    Args:
+        pixel_p : 畸变前的像素坐标
+    Returns:
+        畸变后的像素坐标
+    """
+    global cam_dist
+    u = pixel_p[0]/img_width
+    v = pixel_p[1]/img_height
+    # 计算径向畸变
+    r_sq = u**2 + v**2
+
+    # 径向畸变
+    delta_u = img_width * (u * (cam_dist[0] * r_sq + cam_dist[1] * torch.pow(r_sq, 2) + cam_dist[4] * torch.pow(r_sq,3)) + 2 * cam_dist[2] * u * v + cam_dist[3] * (r_sq + 2 * torch.pow(u,2)))
+    delta_v = img_height * (v * (cam_dist[0] * r_sq + cam_dist[1] * torch.pow(r_sq, 2) + cam_dist[4] * torch.pow(r_sq,3)) + 2 * cam_dist[2] * (r_sq + 2 * torch.pow(v,2)) + cam_dist[3] * u * v)
+    # print(f"delta_uv:{delta_u.detach().numpy(), delta_v.detach().numpy()}")
+    # 加入畸变
+    pixel_p[0] += delta_u
+    pixel_p[1] += delta_v
+
+    return pixel_p
 
 
 def pixel_position(T_0_cam, inst_0_p):
@@ -292,6 +342,7 @@ def pixel_position(T_0_cam, inst_0_p):
     Args:
         T_0_cam (4*4): 0 坐标系下 镜头坐标系(已旋转30°)
         inst_0_p (4): 0 坐标系下 器械末端齐次坐标 
+        apply_distortion_bool: 是否施加畸变
 
     Returns:
         pixel_p(3): 像素齐次坐标[u, v, 1]
@@ -300,7 +351,9 @@ def pixel_position(T_0_cam, inst_0_p):
     cam_inst_p = T_cam_0 @ inst_0_p
     z = cam_inst_p[2]
     pixel_p = cam_K @ cam_inst_p/z
-    return pixel_p
+    # return pixel_p
+    distort_pixel_p = apply_distortion(pixel_p)
+    return distort_pixel_p
 
 
 
@@ -343,9 +396,9 @@ def out_of_view_loss(pixel_p):
         loss += (y-img_height)*out_of_view_k[1]
     return loss
 
-# 定义自定义的目标函数（例如：最小化一个简单的二次函数）
-def loss_function_pixel(params):
-    return -gauss_left.val(x= params[0], y=params[1])
+# # 定义自定义的目标函数（例如：最小化一个简单的二次函数）
+# def loss_function_pixel(params):
+#     return -gauss_left.val(x= params[0], y=params[1])
 
 def d_normal_dist_loss(d):
     global phase
@@ -354,21 +407,30 @@ def d_normal_dist_loss(d):
     return -pdf_value
 
 def loss_function(lap_X):
-    global inst_0_p1, inst_0_p2, T_0_rcm
+    global inst_0_p_dict, T_0_rcm, phase, pixel_adjust_dict
     T_rcm_cam = T_rcm_shaft_calculate(lap_X) @ T_shaft_cam
     # return torch.sum(T_rcm_cam )
     # return torch.sum(rotation_z_T(lap_X[1]) @ rotation_x_T(lap_X[0]) @  rotation_y_T(lap_X[2]) @ ( T_rcm_shaft_0))
     T_0_cam = T_0_rcm @ T_rcm_cam
     # print(f"T_0_cam:\n{T_0_cam}")
     # return torch.sum(T_0_cam)
-    pixel_p1 = pixel_position(T_0_cam, inst_0_p1)
-    pixel_p2 = pixel_position(T_0_cam, inst_0_p2)
+    pixel_loss_list = []
+    for inst in inst_in_phase[phase]:
+        pixel_p = pixel_position(T_0_cam, inst_0_p_dict[inst])
+        pixel_p = pixel_p + pixel_adjust_dict[phase]
+        if not inst in  inst_in_phase[phase]: continue
+        try:
+            pixel_loss_list.append(pixel_loss(pixel_p, gauss_2d_dist_dict[phase][inst]))
+        except:
+            pass
+    # pixel_p1 = pixel_position(T_0_cam, inst_0_p1)
+    # pixel_p2 = pixel_position(T_0_cam, inst_0_p2)
     # print(f"inst left:{ inst_0_p1}, right:{inst_0_p2}, \ncam:\n{T_0_cam}")
     # print(f"pixel: {pixel_p1.data},  {pixel_p2.data}")
     if LAP_X_DOF == 4:
-        loss_list = [pixel_loss(pixel_p1, gauss_left), pixel_loss(pixel_p2, gauss_right), out_of_view_loss(pixel_p1), out_of_view_loss(pixel_p2), d_normal_dist_loss(lap_X[3])]
+        loss_list = pixel_loss_list + [d_normal_dist_loss(lap_X[3])]
     else:
-        loss_list = [pixel_loss(pixel_p1, gauss_left), pixel_loss(pixel_p2, gauss_right), out_of_view_loss(pixel_p1), out_of_view_loss(pixel_p2), d_normal_dist_loss(lap_X[2])]
+        loss_list = pixel_loss_list + [d_normal_dist_loss(lap_X[2])]
     loss = sum(loss_list)
     # loss = pixel_loss(pixel_p1, gauss_left) + pixel_loss(pixel_p2, gauss_right) + out_of_view_loss(pixel_p1) + out_of_view_loss(pixel_p2) + torch.abs(3*lap_X[2]) #+ torch.pow(0.1,  10* lap_X[3])
     # loss = pixel_loss(pixel_p1, gauss_left) + out_of_view_loss(pixel_p1)
@@ -412,13 +474,16 @@ if draw_on:
     X, Y = np.meshgrid(x_range, y_range)
 
     # 计算每个点的高斯值
-    Z = np.zeros_like(X)
+    draw_Z = np.zeros_like(X)
     for i in range(X.shape[0]):
         for j in range(X.shape[1]):
-            Z[i, j] = gauss_left.val(x= torch.tensor(X[i, j]), y= torch.tensor(Y[i, j])) + gauss_right.val(x= torch.tensor(X[i, j]), y= torch.tensor(Y[i, j]))
+            gauss_val = 0
+            for inst in inst_in_phase[phase]:
+                gauss_val += gauss_2d_dist_dict[phase][inst].val(x= torch.tensor(X[i, j]), y= torch.tensor(Y[i, j]))
+            draw_Z[i, j] = gauss_val
 
     # 绘制热力图
-    plt.imshow(Z, extent=[0, img_width, 0, img_height], origin='lower', cmap='viridis', aspect='auto')
+    plt.imshow(draw_Z, extent=[0, img_width, 0, img_height], origin='lower', cmap='viridis', aspect='auto')
     plt.colorbar(label='Gaussian Value')
     plt.draw()
     plt.show()
@@ -426,11 +491,17 @@ if draw_on:
 
 
 def optimize_epoches(epoch_num):
-    global lap_X, inst_0_p1, inst_0_p2, lap_X_record_list
+    global lap_X, inst_0_p_dict, lap_X_record_file, draw_Z, draw_and_save_id
+    if draw_and_save_id % draw_and_save_step == 0:
+        draw_this_optimize = True
+    else:
+        draw_this_optimize = False
 
-    if draw_on:
+    if draw_on and draw_this_optimize:
             plt.clf()
-            plt.imshow(Z, extent=[0, img_width, 0, img_height], origin='lower', cmap='viridis', aspect='auto')
+            plt.imshow(draw_Z, extent=[0, img_width, 0, img_height], origin='lower', cmap='viridis', aspect='auto')
+            colors = [(217/255,120/255,45/255), 'red']
+
 
     start_time = time.perf_counter()
     # 优化过程
@@ -451,19 +522,30 @@ def optimize_epoches(epoch_num):
         optimizer.step()
         
         T_0_cam = T_0_rcm @ T_rcm_shaft_calculate(lap_X) @ T_shaft_cam
-        pixel_p1 = pixel_position(T_0_cam, inst_0_p1)
-        pixel_p2 = pixel_position(T_0_cam, inst_0_p2)
+        # pixel_p1 = pixel_position(T_0_cam, inst_0_p1)
+        # pixel_p2 = pixel_position(T_0_cam, inst_0_p2)
 
-        if draw_on:
-            if epoch %10 == 0:
+        if draw_on and draw_this_optimize:
+            if epoch == 0:
+                for i in range(len(inst_in_phase[phase])):
+                    inst = inst_in_phase[phase][i]
+                    pixel_p = pixel_position(T_0_cam, inst_0_p_dict[inst]) + pixel_adjust_dict[phase]
+                    plt.scatter(pixel_p[0].item(), pixel_p[1].item(), color=colors[i], s=5, label=f'{inst}')
+                    plt.text(pixel_p[0].item(), pixel_p[1].item(),f'{epoch} ', color='white', fontsize=8)
+            elif epoch %10 == 0:
+                for i in range(len(inst_in_phase[phase])):
+                    inst = inst_in_phase[phase][i]
+                    pixel_p = pixel_position(T_0_cam, inst_0_p_dict[inst]) + pixel_adjust_dict[phase]
+                    plt.scatter(pixel_p[0].item(), pixel_p[1].item(), color=colors[i], s=5)
+                    plt.text(pixel_p[0].item(), pixel_p[1].item(),f'{epoch} ', color='white', fontsize=8)
                 # 绘制当前优化的坐标
-                plt.scatter(pixel_p1[0].item(), pixel_p1[1].item(), color=(217/255,120/255,45/255), s=5, label=f'Epoch {epoch + 1}')
-                plt.text(pixel_p1[0].item(), pixel_p1[1].item(),f'{epoch} ', color='white', fontsize=8)
-                plt.scatter(pixel_p2[0].item(), pixel_p2[1].item(), color='red', s=5, label=f'Epoch {epoch + 1}')
-                plt.text(pixel_p2[0].item(), pixel_p2[1].item(),f'{epoch} ', color='white', fontsize=8)
+                # plt.scatter(pixel_p1[0].item(), pixel_p1[1].item(), color=(217/255,120/255,45/255), s=5, label=f'Epoch {epoch + 1}')
+                # plt.text(pixel_p1[0].item(), pixel_p1[1].item(),f'{epoch} ', color='white', fontsize=8)
+                # plt.scatter(pixel_p2[0].item(), pixel_p2[1].item(), color='red', s=5, label=f'Epoch {epoch + 1}')
+                # plt.text(pixel_p2[0].item(), pixel_p2[1].item(),f'{epoch} ', color='white', fontsize=8)
 
         if epoch % 10 == 0:
-            lap_X_record_list.append([time.perf_counter(), epoch, phase] + lap_X.detach().numpy().tolist())
+            lap_X_record_file.write(f"{time.perf_counter()},{phase},{epoch},{np.array2string(lap_X.detach().numpy(), separator=' ')}\n")
 
         # # 打印当前损失和优化参数
         # if epoch % 1 == 0:
@@ -472,18 +554,23 @@ def optimize_epoches(epoch_num):
         #         one loop: {float(time.perf_counter()-loop_start_time):.3f} s")
             
     duration = time.perf_counter() - start_time
-    print(f"loop  lap_X:{[f'{x:.3f}' for x in lap_X.tolist()]},\tdurationg: {duration:.3f}")
+    print(f"loop  lap_X:{[f'{x:.3f}' for x in lap_X.tolist()]},\tduration: {duration:.3f}")
 
-    if draw_on:
+    if draw_on and draw_this_optimize:
         # 显示最终图像
         plt.xlabel('X coordinate')
         plt.ylabel('Y coordinate')
         plt.gca().invert_yaxis()
-        plt.title('2D Gaussian Distribution with Optimized Coordinates')
+        plt.title('Filed of View Optimization')
         plt.legend()
         # plt.show()
-        plt.draw()
-        plt.pause(0.01)
+        if show_on:
+            plt.draw()
+            plt.pause(0.01)
+        plt.savefig(f"{optimal_fig_folder}/{draw_and_save_id}_{start_time}.png")
+    draw_and_save_id += 1
+    duration = time.perf_counter() - start_time
+    print(f"whole duration: {duration:.3f}")
 
 def lap_X_callback(msg):
     global lap_X_now
@@ -491,18 +578,32 @@ def lap_X_callback(msg):
     # print("lap_X_callback")
 
 def base0_rigid_end_callback(msg):
-    global base0_rigid_end_dict, inst_0_p1, inst_0_p2
+    global base0_rigid_end_dict, inst_0_p_dict
     base0_rigid_end_dict =  json.loads(msg.data)
-    fenliqian_numpy = np.array(base0_rigid_end_dict['fenliqian']) #???不同阶段其他器械
-    chizhenqi_numpy = np.array(base0_rigid_end_dict['chizhenqi'])
-    if not np.isnan(fenliqian_numpy[0]):
-        inst_0_p1 = torch.tensor(fenliqian_numpy, dtype= torch.float32)
-    if not np.isnan(chizhenqi_numpy[0]):
-        inst_0_p2 = torch.tensor(chizhenqi_numpy,  dtype=torch.float32)
+    for inst, val in base0_rigid_end_dict.items():
+        val_np = np.array(val)
+        if not np.isnan(val_np[0]):
+            inst_0_p_dict[inst] = torch.tensor(val_np, dtype= torch.float32)
+    # fenliqian_numpy = np.array(base0_rigid_end_dict['fenliqian']) #???不同阶段其他器械
+    # chizhenqi_numpy = np.array(base0_rigid_end_dict['chizhenqi'])
+    # if not np.isnan(fenliqian_numpy[0]):
+    #     inst_0_p1 = torch.tensor(fenliqian_numpy, dtype= torch.float32)
+    # if not np.isnan(chizhenqi_numpy[0]):
+    #     inst_0_p2 = torch.tensor(chizhenqi_numpy,  dtype=torch.float32)
         
 def phase_callback(msg):
-    global phase
-    phase = msg.data
+    global phase, draw_Z, inst_changing
+    if phase != msg.data:
+        phase = msg.data
+        if phase == 'cutting': inst_changing = True
+        # 计算每个点的高斯值
+        draw_Z = np.zeros_like(X)
+        for i in range(X.shape[0]):
+            for j in range(X.shape[1]):
+                gauss_val = 0
+                for inst in inst_in_phase[phase]:
+                    gauss_val += gauss_2d_dist_dict[phase][inst].val(x= torch.tensor(X[i, j]), y= torch.tensor(Y[i, j]))
+                draw_Z[i, j] = gauss_val
 
 
 if __name__ == "__main__":
@@ -514,9 +615,17 @@ if __name__ == "__main__":
     lap_X_desired_pub = rospy.Publisher('/cmd/lap_X',Float32MultiArray,queue_size=1)
     lap_X_desired_msg = Float32MultiArray()
 
+    time.sleep(1)
     while not rospy.is_shutdown():
-        while inst_0_p1 is None or inst_0_p2 is None:
-            pass
+
+        skip_while = False
+        for inst in inst_in_phase[phase]:
+            if inst_0_p_dict[inst] is None:
+                print(f"inst_0_p_dict {inst} : None")
+                skip_while = True
+                continue
+        if skip_while:
+            continue
         
         if lap_X_now is not None:
             if LAP_X_DOF == 4:
@@ -559,7 +668,11 @@ if __name__ == "__main__":
                 # # lap_X_desired_msg.data[3] = 0.29
                 # lap_X_desired_msg.data[3] = 0.16
                 # # lap_X_desired_msg.data[3] = 0.24
-
+            if inst_changing:
+                time.sleep(3)
+                inst_changing = False
+                continue
             lap_X_desired_pub.publish(lap_X_desired_msg)
     
-    np.savetxt(lap_X_record_path, lap_X_record_list, delimiter=',')
+    lap_X_record_file.close()
+   

@@ -53,7 +53,7 @@ import termios
 sys.path.append(f"{os.path.dirname(__file__)}/../optimal/scripts")
 from lap_set_pk import lap_set
 # ==================================================================================================
-show_flag = True
+show_flag = False
 write_flag = False  # 是否在图像上写字
 
 video_file_path = lap_set.video_file_path

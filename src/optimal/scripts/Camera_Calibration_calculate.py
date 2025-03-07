@@ -181,5 +181,5 @@ T_tool_camera = np.vstack((T_tool_camera, np.array([0,0,0,1])))
 print(f'相机在机器人末端坐标系的位姿：\n{T_tool_camera}')
 
 np.savetxt(f'{Camera_Calibration_folder}/temp_result/mtx.csv', mtx)
-np.savetxt(f'{Camera_Calibration_folder}/temp_result/dist.csv', dist)
+np.savetxt(f'{Camera_Calibration_folder}/temp_result/dist.csv', dist)  # 畸变系数
 np.savetxt(f'{Camera_Calibration_folder}/temp_result/camera_tool.csv', T_tool_camera)

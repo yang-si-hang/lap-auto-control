@@ -100,8 +100,15 @@ while not 'lap' in qualisys_rigid_end_dict:
     pass
 
 
-exit()
+# exit()
 # while not rospy.is_shutdown():
+
+print(f"qualisys x0")
+move(T_0_rob_qualisysx0.copy(), linear_speed=0.02, rigid_name='lap')
+time.sleep(1)
+move(T_0_rob_start.copy(), linear_speed=0.03, rigid_name='lap')
+time.sleep(1)
+
 print(f"forward")
 move(T_0_rob_forward.copy(), linear_speed=0.02, rigid_name='lap')
 time.sleep(1)

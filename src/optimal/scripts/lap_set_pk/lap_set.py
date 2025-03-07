@@ -75,7 +75,8 @@ if os.path.exists(f"{Camera_Calibration_folder}/camera_tool.csv"):
 else:
     print("[lap_set]: No camera_tool.csv 尚未标定")
 
-camera_K = np.loadtxt(f"{data_folder}/Camera_Calibration/mtx.csv")
+camera_K = np.loadtxt(f"{data_folder}/Camera_Calibration/mtx.csv") #内参
+camera_dist = np.loadtxt(f"{data_folder}/Camera_Calibration/dist.csv") #畸变参数
 # ------------------------------------------ 动捕 ------------------------------------------
 # qualisys_master_ip = "192.168.253.1"
 qualisys_master_ip = "192.168.253.17"
