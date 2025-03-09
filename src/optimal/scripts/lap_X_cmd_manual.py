@@ -1,5 +1,9 @@
 """
 手动控制 lap_X_cmd 发布
+    alpha   beta    gamma   d
++:  q       w       e       r
+-:  a       s       d       f
+0:  z       x       c       无
 """
 
 

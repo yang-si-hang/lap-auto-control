@@ -42,9 +42,9 @@ sys.path.append(f"{os.path.dirname(__file__)}/../../scripts")
 import rokae_basic_fun 
 
 #==============================================================================================
-random_steps = 6
+random_steps = 30 #采样步数
 
-joint_velocity = 25.0/180.0*math.pi
+joint_velocity = 15.0/180.0*math.pi
 np.set_printoptions(precision=6, suppress=True)
 
 
@@ -122,6 +122,15 @@ def gravity_compensation(force_file_path, sensor_pose_file_path, G_L_F0_file_pat
 
 
 def move_and_save_data(num_data_point, force_file_path, sensor_pose_file_path, _rokae, F_sensor):
+        """
+        随机转动最后三个关节(5~7), 记录力信息和位姿信息, 以供后续标定计算。
+        Args:
+            num_data_point (int):  随机采样位姿数量
+            force_file_path (str): 力信息记录文件路径
+            sensor_pose_file_path (str): 传感器位姿记录文件路径
+            _rokae: 自封装的rokae类对象
+            F_sensor: 自封装的F_sensor_receiver对象
+        """
         
         global R_rob_sensor, T_rob_sensor
         R_sensor_rob = R_rob_sensor.T
@@ -204,8 +213,10 @@ if __name__ == '__main__':
                     input_data = keyboard_monitor.read_char()
                     if input_data == '1':
                         choice = 1
-                        print('运动至初始位置')
-                        rokae.jp_cmd(np.array([0,     34.276,     0,      48.969,     5.435,      48.827,     81.927])* (np.pi/180), velocity=joint_velocity) #
+                        use_start_joints = input("选择开始位置：\n0: 当前位置\n1: 设定位置[0, 34, 0, 48, 5, 48, 81]")
+                        if use_start_joints == '1':
+                            print('运动至初始位置')
+                            rokae.jp_cmd(np.array([0,     34.276,     0,      48.969,     5.435,      48.827,     81.927])* (np.pi/180), velocity=joint_velocity) #
                         # 运动采点，并保存数据
                         move_and_save_data(random_steps, F_file, pose_file, rokae, F_sensor)
                         #根据数据点文件来进行计算

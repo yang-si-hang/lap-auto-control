@@ -21,6 +21,7 @@ from scipy.spatial.transform import Rotation
 import math3d as m3d
 import random
 from geometry_msgs.msg import TwistStamped, Point
+from geometry_msgs.msg import WrenchStamped, Wrench
 
 np.set_printoptions(precision=6, suppress=True)
 
@@ -42,32 +43,67 @@ data_folder = "/home/irobotcare/桌面/EX_Data/其他测试/drag"
 
 
 
-def record_original_force(F_sensor, fps=500):
+def record_original_force():
     now = datetime.now()
     # 格式化时间为 'YYYY-MM-DD HH:MM:SS' 格式
     formatted_time = now.strftime("%Y%m%d%H%M%S")
     file_name = f"{data_folder}/原始力{formatted_time}.txt"
-    file = open(file_name, "w", encoding="utf-8")
+    data_list=[]
 
+    def force_sensor_callback(msg):
+        time_stamp = time.perf_counter()
+        force = [msg.wrench.force.x, msg.wrench.force.y, msg.wrench.force.z]
+        torque = [msg.wrench.torque.x, msg.wrench.torque.y, msg.wrench.torque.z]
+        F = force + torque
+        data = [time_stamp]+F
+        data_list.append(data) 
+        # print(data)
+
+    rospy.Subscriber('/Bota_force_sensor/wrenchstamped',WrenchStamped,  force_sensor_callback)
     try:
-        rate = rospy.Rate(fps)
+        print("record start")
         while not rospy.is_shutdown():
-            time_stamp = time.perf_counter()
-            F = F_sensor.F
-            data = f"{time_stamp},{F[0]},{F[1]},{F[2]},{F[3]},{F[4]},{F[5]}\n"
-            file.write(data)
-            print(data)
-            rate.sleep()
+            pass
+            
     except:
         print("record_original_force: except")
-        file.close()
+        
     finally:
         print("record_original_force: finally")
-        file.close()
+        np.savetxt(file_name,np.array(data_list),delimiter=',')
+
+def record_pure_force(F_sensor, rokae):
+    now = datetime.now()
+    # 格式化时间为 'YYYY-MM-DD HH:MM:SS' 格式
+    formatted_time = now.strftime("%Y%m%d%H%M%S")
+    file_name = f"{data_folder}/操作力{formatted_time}.txt"
+    data_list=[]
+    R_rob_sensor = lap_set.T_rob_sensor[:3,:3]
+
+    try:
+        print("record start")
+        while not rospy.is_shutdown():
+            time_stamp = time.perf_counter()
+            R_0_rob = rokae.pose.R_matrix()
+            R_0_sensor = R_0_rob @ R_rob_sensor
+            F_pure = F_sensor.pure_force_now(R_0_sensor)
+            data = np.insert(F_pure,0,time_stamp)
+            data_list.append(data.copy())
+            print(data)
+            pass
+            
+    except:
+        print("record_original_force: except")
+        
+    finally:
+        print("record_original_force: finally")
+        np.savetxt(file_name,np.array(data_list),delimiter=',')
 
 
 if __name__ == "__main__":
     rospy.init_node("force_record")
     F_sensor = force_sensor_receiver.force_sensor_receiver_class()
-    record_original_force(F_sensor)
+    rokae = rokae_basic_fun.rokae()
+    # record_original_force()
+    record_pure_force(F_sensor, rokae)
     pass

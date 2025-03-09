@@ -60,7 +60,8 @@ vector_s_rcm_path = f'{data_fold}/vector_s_rcm.txt'
 time_calculate_path = f'{data_fold}/time_calculate.txt'
 time_pub_path = f'{data_fold}/time_pub.txt'
 torque_force_tau_path = f'{data_fold}/torque_force_tau.txt'
-torque_damp_linear_tau_path = f'{data_fold}/torque_force_tau.txt'
+torque_damp_linear_tau_path = f'{data_fold}/torque_damp_linear_tau.txt'
+torque_torque_and_force_path = f'{data_fold}/torque_torque_and_force.txt'
 
 '''
 force_before_filter_file = open(force_before_filter_path, 'a')
@@ -104,6 +105,7 @@ time_calculate_list = []
 time_pub_list = []
 torque_force_tau_list = []
 torque_damp_linear_tau_list = []
+torque_torque_and_force_list = []
 
 
 force_threshold = 5
@@ -142,7 +144,7 @@ damping_linear_z = 80
 damping_angular_matrix = np.zeros((3,3))
 damping_angular_matrix[0,0] = 0.4
 damping_angular_matrix[1,1] = 0.4
-damping_angular_matrix[2,2] = 0.8
+damping_angular_matrix[2,2] = 1.6
 
 rcm_error_velocity = np.array([0.0, 0.0, 0.0])
 rcm_velocity_rate = 1.0
@@ -212,7 +214,7 @@ def point_to_rcm(__rokae):
     print(f'rcm position: {rcm_position}')
     print(f'z_desire: {z_desire}')
     print('T_desir','\n',T_desir)
-    rokae.cp_cmd(T_desir)
+    rokae.cp_cmd(T_desir,0.01,2/180*math.pi)
   
 
 def filter_weight_generate(length=20, sigma=10, miu=0):
@@ -353,6 +355,7 @@ if __name__ == "__main__":
                     vector_s_rcm_list.append(np.array([0,0,0]))
                     torque_force_tau_list.append(np.array([0,0,0]))
                     torque_damp_linear_tau_list.append(np.array([0,0,0]))
+                    torque_torque_and_force_list.append(np.array([0,0,0]))
                 velocity_linear = np.array([0,0,0],dtype=float)
                 velocity_angular = np.array([0,0,0],dtype=float)
                 acceleration_linear = np.array([0,0,0],dtype=float)
@@ -504,6 +507,7 @@ if __name__ == "__main__":
                 vector_s_rcm_list.append(vector_s_rcm.copy())
                 torque_force_tau_list.append(torque_force_tau.copy())
                 torque_damp_linear_tau_list.append(torque_damp_linear_tau.copy())
+                torque_torque_and_force_list.append(torque.copy())
 
 
 
@@ -566,6 +570,8 @@ if __name__ == "__main__":
             np.savetxt(vector_s_rcm_path, np.array(vector_s_rcm_list), delimiter=',')
             np.savetxt(torque_force_tau_path, np.array(torque_force_tau_list), delimiter=',')
             np.savetxt(torque_damp_linear_tau_path, np.array(torque_damp_linear_tau_list), delimiter=',')
+            np.savetxt(torque_torque_and_force_path, np.array(torque_torque_and_force_list), delimiter=',')
+            
 
             # 发布循环中的数据
             np.savetxt(time_pub_path, np.array(time_pub_list), delimiter=',')
