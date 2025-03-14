@@ -326,7 +326,7 @@ def apply_distortion(pixel_p):
 
     # 径向畸变
     delta_u = img_width * (u * (cam_dist[0] * r_sq + cam_dist[1] * torch.pow(r_sq, 2) + cam_dist[4] * torch.pow(r_sq,3)) + 2 * cam_dist[2] * u * v + cam_dist[3] * (r_sq + 2 * torch.pow(u,2)))
-    delta_v = img_height * (v * (cam_dist[0] * r_sq + cam_dist[1] * torch.pow(r_sq, 2) + cam_dist[4] * torch.pow(r_sq,3)) + 2 * cam_dist[2] * (r_sq + 2 * torch.pow(v,2)) + cam_dist[3] * u * v)
+    delta_v = img_height * (v * (cam_dist[0] * r_sq + cam_dist[1] * torch.pow(r_sq, 2) + cam_dist[4] * torch.pow(r_sq,3)) + cam_dist[2] * (r_sq + 2 * torch.pow(v,2)) + 2*cam_dist[3] * u * v)
     # print(f"delta_uv:{delta_u.detach().numpy(), delta_v.detach().numpy()}")
     # 加入畸变
     pixel_p[0] += delta_u
