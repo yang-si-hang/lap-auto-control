@@ -137,21 +137,26 @@ T_rob_tool = np.array([     [-1.0 , 0.0 ,   0.0 ,   -0.0],
                             [ 0.       ,   0.      ,    0.       ,   1.        ]])
 
 # 定位针，快拆版本
-rob_needle_end_vector = np.array([0, 0, 0.278])
+rob_needle_end_vector = np.array([0, 0, 0.285])
 
 # 腹腔镜末端到机械臂末端法兰尺寸
 rob_lap_end_vector = np.array([0, 0, 0.67])
 
 
 #2023.09.18 ur5 左臂第一版参数
+rcm_rob_stand = True # T/F: 用机器人标定的/用qualisys标定的
 camera_rcm_pose_index = 0
-try:
-    T_0_rcm = np.loadtxt(camera_rcm_pose_file[camera_rcm_pose_index],delimiter=',')
-except:
-    T_0_rcm = np.loadtxt(camera_rcm_pose_file[camera_rcm_pose_index],delimiter=' ')
+
 #???????
-T_qualisys_rcm = np.loadtxt(f'{data_folder}/coordinate_set/qualisys_rcm.txt',delimiter=',')
-T_0_rcm = T_0_qualisys @ T_qualisys_rcm
+if rcm_rob_stand:
+    try:
+        T_0_rcm = np.loadtxt(camera_rcm_pose_file[camera_rcm_pose_index],delimiter=',')
+    except:
+        T_0_rcm = np.loadtxt(camera_rcm_pose_file[camera_rcm_pose_index],delimiter=' ')
+    T_qualisys_rcm = np.linalg.inv(T_0_qualisys) @ T_0_rcm
+else:
+    T_qualisys_rcm = np.loadtxt(f'{data_folder}/coordinate_set/qualisys_rcm.txt',delimiter=',')
+    T_0_rcm = T_0_qualisys @ T_qualisys_rcm
 print(f"T_qualisys_rcm:\n{T_qualisys_rcm}")
 print(f"T_0_rcm:\n{T_0_rcm}")
 

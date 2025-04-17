@@ -26,6 +26,7 @@ class rokae:
 
         self.pose = self.mine_pose()
         self.JointState = JointState()
+        self.cv_now = [0,0,0,0,0,0]
 
         self.__Mode = 'cp'
         self.__pub_cp = rospy.Publisher('/rokae/command/CartesianPose',PoseStamped,queue_size=1)
@@ -35,6 +36,7 @@ class rokae:
 
         rospy.Subscriber('rokae/state/JointState', JointState, self.JointState_callback)
         rospy.Subscriber('rokae/state/CartesianPose', PoseStamped, self.CarteisianPose_callback)
+        rospy.Subscriber('rokae/state/Twist', TwistStamped, self.cv_state_callback)
         
 
         self._frequency = 1000
@@ -118,6 +120,15 @@ class rokae:
         self.pose.orientation.x = msg.pose.orientation.x
         self.pose.orientation.y = msg.pose.orientation.y
         self.pose.orientation.z = msg.pose.orientation.z
+    
+    def cv_state_callback(self, msg):
+        self.cv_now[0] = msg.twist.linear.x
+        self.cv_now[1] = msg.twist.linear.y
+        self.cv_now[2] = msg.twist.linear.z
+        self.cv_now[3] = msg.twist.angular.x
+        self.cv_now[4] = msg.twist.angular.y
+        self.cv_now[5] = msg.twist.angular.z
+
 
 
     def cp_stop(self, time=1):

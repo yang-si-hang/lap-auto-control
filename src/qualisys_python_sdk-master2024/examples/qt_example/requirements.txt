@@ -1,3 +1,0 @@
-qtm_rt
-PyQt5==5.9
-Quamash==0.6.1

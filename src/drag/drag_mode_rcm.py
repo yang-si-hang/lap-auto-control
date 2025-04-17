@@ -52,6 +52,7 @@ force_before_filter_path = f'{data_fold}/force_before_filter.txt'
 force_filtered_path = f'{data_fold}/force_filtered.txt'
 pose_path = f'{data_fold}/pose.txt'
 rcm_error_path = f'{data_fold}/rcm_error.txt'
+rcm_adjust_path = f'{data_fold}/rcm_adjust.txt'
 acceleration_linear_path = f'{data_fold}/acceleration_linear.txt'
 acceleration_angular_path = f'{data_fold}/acceleration_angular.txt'
 velocity_linear_path = f'{data_fold}/velocity_linear.txt'
@@ -165,6 +166,11 @@ time_step = 1.0/frequency_calculate
 
 T_0_rcm = lap_set.T_0_rcm
 rcm_position = T_0_rcm[:3,3].squeeze()
+rcm_adjust = np.array([0, 0, 0])
+rcm_adjust_record_list =[] 
+rcm_adjust_record_list.append([time.perf_counter(), 0, 0, 0])
+adjust_step = 0.002
+
 
 T_rob_sensor = lap_set.T_rob_sensor
 R_rob_sensor = T_rob_sensor[:3,:3]
@@ -173,7 +179,9 @@ R_rob_sensor = T_rob_sensor[:3,:3]
 sensor_safe_force = 300   
 sensor_safe_torque = 7.5
 
-lock_flag = False
+lock_flag = False #键盘 l/k True/False 锁/解锁 ，键盘lk触发时 feetlock_fun_on 设为 false （即键盘lk优先于踏板）
+feetlock_fun_on = True #踏板锁功能是否开启, 若开启， 踩下解锁， 松开上锁 键盘‘q/w’ 开/关
+
 
 def max_norm(__matrix, __axis = 1):
     '''
@@ -249,13 +257,15 @@ def weighted_moving_average_filter(_before_data, _weights, _stemp_num):
 
 
 def keyboard_listener():
-    global force_sensor_resetting,lock_flag
+    global force_sensor_resetting,lock_flag, feetlock_fun_on
     while True:
         rlist, _, _ = keyboard_monitor.detect()
         if rlist:
             # 读取单个字符并处理
             input_data = keyboard_monitor.read_char()
             print("You typed:", input_data)
+
+            #力传感器置0 ---
             if input_data == 'r':
                 force_sensor_resetting = True
                 time_temp = time.perf_counter()
@@ -263,12 +273,67 @@ def keyboard_listener():
                 F_sensor.F0_write()
                 print(f'time duration of force sensor resseting:{time.perf_counter()-time_temp}')
                 force_sensor_resetting = False
+
+            #锁定 ---
             elif input_data == 'l':
+                feetlock_fun_on = False
                 lock_flag = True
                 print(f'机械臂已 锁定')
             elif input_data == 'k':
+                feetlock_fun_on = False
                 lock_flag = False
                 print('机械臂已 解锁')
+            elif input_data == 'q':
+                feetlock_fun_on = True
+                print(f"踏板锁定功能 开启")
+            elif input_data == 'w':
+                feetlock_fun_on = False
+                print(f"踏板锁定功能 关闭")
+            elif input_data == 'a':
+                if feetlock_fun_on:
+                    lock_flag = False
+
+            # rcm点位置调节 ---
+            elif input_data == 'y': # x++
+                rcm_adjust[0] += adjust_step
+                rcm_position[0] += adjust_step
+                T_0_rcm[0, 3] += adjust_step
+                rcm_adjust_record_list.append([time.perf_counter(), rcm_adjust[0], rcm_adjust[1], rcm_adjust[2]])
+                print(f"RCM adjust: x++ {rcm_adjust}\t[+{adjust_step}  0  0]")
+            elif input_data == 'h': # x--
+                rcm_adjust[0] -= adjust_step
+                rcm_position[0] -= adjust_step
+                T_0_rcm[0, 3] -= adjust_step
+                rcm_adjust_record_list.append([time.perf_counter(), rcm_adjust[0], rcm_adjust[1], rcm_adjust[2]])
+                print(f"RCM adjust: x-- {rcm_adjust}\t[-{adjust_step}  0  0]")
+            elif input_data == 'g': # y++
+                rcm_adjust[1] += adjust_step
+                rcm_position[1] += adjust_step
+                T_0_rcm[1, 3] += adjust_step
+                rcm_adjust_record_list.append([time.perf_counter(), rcm_adjust[0], rcm_adjust[1], rcm_adjust[2]])
+                print(f"RCM adjust: y++ {rcm_adjust}\t[0  +{adjust_step}  0]")
+            elif input_data == 'j': # y--
+                rcm_adjust[1] -= adjust_step
+                rcm_position[1] -= adjust_step
+                T_0_rcm[1, 3] -= adjust_step
+                rcm_adjust_record_list.append([time.perf_counter(), rcm_adjust[0], rcm_adjust[1], rcm_adjust[2]])
+                print(f"RCM adjust: y-- {rcm_adjust}\t[0  -{adjust_step}  0]")
+            elif input_data == 'u': # z++
+                rcm_adjust[2] += adjust_step
+                rcm_position[2] += adjust_step
+                T_0_rcm[2, 3] += adjust_step
+                rcm_adjust_record_list.append([time.perf_counter(), rcm_adjust[0], rcm_adjust[1], rcm_adjust[2]])
+                print(f"RCM adjust: z++ {rcm_adjust}\t[0  0  +{adjust_step}]")
+            elif input_data == 't': # z--
+                rcm_adjust[2] -= adjust_step
+                rcm_position[2] -= adjust_step
+                T_0_rcm[2, 3] -= adjust_step
+                rcm_adjust_record_list.append([time.perf_counter(), rcm_adjust[0], rcm_adjust[1], rcm_adjust[2]])
+                print(f"RCM adjust: z-- {rcm_adjust}\t[0  0  -{adjust_step}]")
+        else:
+            if feetlock_fun_on:
+                lock_flag = True
+                
 
 
 # 在后台启动一个监听线程
@@ -579,6 +644,10 @@ if __name__ == "__main__":
             np.savetxt(rcm_error_path, np.array(rcm_error_list), delimiter=',')
             np.savetxt(velocity_angular_path, np.array(velocity_angular_list), delimiter=',')
             np.savetxt(velocity_linear_path, np.array(velocity_linear_list), delimiter=',')
+
+            # 其他数据
+            np.savetxt(rcm_adjust_path, np.array(rcm_adjust_record_list), delimiter=',')
+
             print(f'数据保存完毕')
             user_input = input("需要计算最大力、速度请输入'1':")
             if user_input == '1':

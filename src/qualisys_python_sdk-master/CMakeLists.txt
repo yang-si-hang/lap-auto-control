@@ -171,6 +171,7 @@ catkin_install_python(PROGRAMS
   scripts/qualisys_rcm_to_rob_rcm.py
   scripts/rigids_record.py
   scripts/rigid_end_record_pub.py
+  scripts/Qualisys_Rob_CAL2_pub.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
