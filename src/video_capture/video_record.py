@@ -54,7 +54,7 @@ sys.path.append(f"{os.path.dirname(__file__)}/../optimal/scripts")
 from lap_set_pk import lap_set
 # ==================================================================================================
 show_flag = True
-write_flag = False  # 是否在图像上写字
+write_flag = True  # 是否在图像上写字
 
 video_file_path = lap_set.video_file_path
 video_time_stamp_file_path = lap_set.video_time_stamp_file_path  # 用于保存视频数据传递进来后，time.perf_counter() 的时间戳，单位s
